@@ -13,6 +13,7 @@
 #pragma once
 
 #include <bitset>
+#include <cstdint>
 #include <memory>
 #include <mutex>  // NOLINT
 #include <sstream>
@@ -30,6 +31,7 @@
 
 /** @brief Total bucket size. */
 #define TOTAL_BUCKET_SIZE (DENSE_BUCKET_SIZE + OVERFLOW_BUCKET_SIZE)
+#define BITSET_CAPACITY 64
 
 namespace bustub {
 
@@ -92,6 +94,9 @@ class HyperLogLogPresto {
   uint64_t cardinality_;
 
   // TODO(student) - can add more data structures as required
+  int16_t b_;
+  bool flag_;
+  std::mutex mtx_;
 };
 
 }  // namespace bustub

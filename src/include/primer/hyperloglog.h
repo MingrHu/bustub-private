@@ -18,7 +18,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-
 #include "common/util/hash_util.h"
 
 /** @brief Capacity of the bitset stream. */
@@ -73,6 +72,13 @@ class HyperLogLog {
   size_t cardinality_;
 
   /** @todo (student) can add their data structures that support HyperLogLog */
+  size_t b_;
+
+  std::vector<double> regist_;
+
+  std::mutex mtx_;
+
+  bool flag_;
 };
 
 }  // namespace bustub
