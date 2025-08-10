@@ -15,8 +15,10 @@
 #include <future>  // NOLINT
 #include <optional>
 #include <thread>  // NOLINT
+#include <utility>
 
 #include "common/channel.h"
+#include "common/config.h"
 #include "storage/disk/disk_manager.h"
 
 namespace bustub {
@@ -40,6 +42,10 @@ struct DiskRequest {
 
   /** Callback used to signal to the request issuer when the request has been completed. */
   std::promise<bool> callback_;
+  
+  DiskRequest(bool is_write,char* data,
+    page_id_t pgid,std::promise<bool> callbak):
+    is_write_(is_write),data_(data),page_id_(pgid),callback_(std::move(callbak)){};
 };
 
 /**

@@ -60,6 +60,7 @@ class FrameHeader {
   friend class BufferPoolManager;
   friend class ReadPageGuard;
   friend class WritePageGuard;
+  friend class PageGuard;
 
  public:
   explicit FrameHeader(frame_id_t frame_id);
@@ -79,7 +80,7 @@ class FrameHeader {
   std::atomic<size_t> pin_count_;
 
   /** @brief The dirty flag. */
-  bool is_dirty_;
+  std::atomic<bool> is_dirty_;
 
   /**
    * @brief A pointer to the data of the page that this frame holds.
@@ -95,6 +96,7 @@ class FrameHeader {
    * currently storing. This might allow you to skip searching for the corresponding (page ID, frame ID) pair somewhere
    * else in the buffer pool manager...
    */
+  page_id_t pgid_{INVALID_PAGE_ID}; 
 };
 
 /**
@@ -126,6 +128,7 @@ class BufferPoolManager {
   void FlushAllPagesUnsafe();
   void FlushAllPages();
   auto GetPinCount(page_id_t page_id) -> std::optional<size_t>;
+  void load_datafromdisk(frame_id_t fid)const;
 
  private:
   /** @brief The number of frames in the buffer pool. */
@@ -172,5 +175,6 @@ class BufferPoolManager {
    * stored inside of it. Additionally, you may also want to implement a helper function that returns either a shared
    * pointer to a `FrameHeader` that already has a page's data stored inside of it, or an index to said `FrameHeader`.
    */
+   
 };
 }  // namespace bustub
