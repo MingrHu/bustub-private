@@ -149,7 +149,30 @@ auto BufferPoolManager::NewPage() -> page_id_t
  * @param page_id The page ID of the page we want to delete.
  * @return `false` if the page exists but could not be deleted, `true` if the page didn't exist or deletion succeeded.
  */
-auto BufferPoolManager::DeletePage(page_id_t page_id) -> bool { UNIMPLEMENTED("TODO(P1): Add implementation."); }
+auto BufferPoolManager::DeletePage(page_id_t page_id) -> bool 
+{ 
+  auto num = GetPinCount(page_id);
+  if(!num.has_value()){
+    return false;
+  }
+  bpm_latch_->lock();
+  if(page_table_.find(page_id)!=page_table_.end()){
+    frame_id_t fid = page_table_[page_id];
+    page_table_.erase(page_id);
+    auto curframe = frames_[fid];
+    // 对帧的任何操作加独占帧锁
+    curframe->rwlatch_.lock();
+    if(curframe->pgid_ == page_id){
+      replacer_->Remove(fid);
+      curframe->Reset();
+      free_frames_.push_back(fid);
+    }
+    curframe->rwlatch_.unlock();
+  }
+  disk_scheduler_->DeallocatePage(page_id);
+  bpm_latch_->unlock();
+  return true;
+}
 
 /**
  * @brief Acquires an optional write-locked guard over a page of data. The user can specify an `AccessType` if needed.
@@ -210,13 +233,15 @@ auto BufferPoolManager::CheckedWritePage(page_id_t page_id, AccessType access_ty
     res = std::move(wguard);
   }
   else{
+
     bpm_latch_->lock();
     // 尝试获取空闲的新帧
-    if(free_frames_.size() > 0){
+    if(!free_frames_.empty()){
       fid = free_frames_.front();
       free_frames_.pop_front();
     }
     bpm_latch_->unlock();
+
     // 如果获取到了空闲帧 pin_count = 0
     if(fid != INVALID_FRAME_ID){
       // 对帧元数据进行操作
@@ -224,7 +249,7 @@ auto BufferPoolManager::CheckedWritePage(page_id_t page_id, AccessType access_ty
       // 记录一下新拿到的帧对应的当前页号
       newframe->pgid_ = page_id;
       // 从磁盘加载当前页的内容
-      load_datafromdisk(fid);
+      Loaddatafromdisk(fid);
 
       // 帧更新成功后才能新建映射
       bpm_latch_->lock();
@@ -245,21 +270,22 @@ auto BufferPoolManager::CheckedWritePage(page_id_t page_id, AccessType access_ty
         fid = evid.value();
         auto curframe = frames_[fid];
         // 开始清理脏页 
-        FlushPage(page_id);
+        // 对帧的任何修改需要加帧锁
+        FlushPage(curframe->pgid_);
 
         bpm_latch_->lock();
         page_table_.erase(curframe->pgid_);
         bpm_latch_->unlock();
 
         // 确保别的操作执行完成后才能开始接下来的操作
-        // 且由于当前操作独占 因此后续操作是安全的
+        // 且由于当前操作有帧锁 因此后续对帧操作是安全的
         WritePageGuard wguard(page_id,curframe,replacer_,bpm_latch_,
           disk_scheduler_);
         
         // 更新帧和页的绑定
         curframe->pgid_ = page_id;
         // 从磁盘加载页的内容
-        load_datafromdisk(fid);
+        Loaddatafromdisk(fid);
 
         // 内容同步成功后新建映射
         bpm_latch_->lock();
@@ -315,12 +341,14 @@ auto BufferPoolManager::CheckedReadPage(page_id_t page_id, AccessType access_typ
     res =std::move(rguard);
   }
   else{
+
     bpm_latch_->lock();
-    if(free_frames_.size() > 0){
+    if(!free_frames_.empty()){
       fid = free_frames_.front();
       free_frames_.pop_front();
     }
     bpm_latch_->unlock();
+
     // 找到合适的空闲帧
     if(fid != INVALID_FRAME_ID){
       auto newframe = frames_[fid];
@@ -328,7 +356,7 @@ auto BufferPoolManager::CheckedReadPage(page_id_t page_id, AccessType access_typ
       ReadPageGuard rguard{page_id,newframe,replacer_,
         bpm_latch_,disk_scheduler_};
 
-      load_datafromdisk(fid);
+      Loaddatafromdisk(fid);
 
       bpm_latch_->lock();
       page_table_[page_id] = fid;
@@ -340,12 +368,12 @@ auto BufferPoolManager::CheckedReadPage(page_id_t page_id, AccessType access_typ
       if(evid.has_value()){
         fid = evid.value();
         auto curframe = frames_[fid];
+        // 开始清理脏页 
+        FlushPage(curframe->pgid_);
+        // 只有曾经的页面清理干净了才能清楚页表
         bpm_latch_->lock();
         page_table_.erase(curframe->pgid_);
         bpm_latch_->unlock();
-
-        // 开始清理脏页 
-        FlushPage(page_id);
 
         // 这里加独占锁的原因是有可能别的线程正在访问
         // 当前的这个帧并进行保护页的读操作 但当前线程又不能真的创建一个pageguard
@@ -355,16 +383,16 @@ auto BufferPoolManager::CheckedReadPage(page_id_t page_id, AccessType access_typ
         curframe->pgid_ = page_id;
         // 设置当前帧
         // 从磁盘加载页的内容
-        load_datafromdisk(fid);
+        Loaddatafromdisk(fid);
         curframe->rwlatch_.unlock();
 
-        // 绑定帧头和页面保护
-        ReadPageGuard rguard{page_id,curframe,replacer_,
-        bpm_latch_,disk_scheduler_};
         // 内容同步成功后新建映射
         bpm_latch_->lock();
         page_table_[page_id] = fid;
         bpm_latch_->unlock();
+
+        ReadPageGuard rguard{page_id,curframe,replacer_,
+        bpm_latch_,disk_scheduler_};
 
         res = std::move(rguard);
       }
@@ -420,7 +448,6 @@ auto BufferPoolManager::ReadPage(page_id_t page_id, AccessType access_type) -> R
     std::abort();
   }
 
-
   return std::move(guard_opt).value();
 }
 
@@ -446,9 +473,11 @@ auto BufferPoolManager::ReadPage(page_id_t page_id, AccessType access_type) -> R
 auto BufferPoolManager::FlushPageUnsafe(page_id_t page_id) -> bool 
 { 
   bool is_find = (page_table_.find(page_id)!=page_table_.end());
-  if(!is_find)
+  if(!is_find){
     return false;
-  auto curframe = frames_[page_id];
+  }
+  frame_id_t fid = page_table_[page_id];
+  auto curframe = frames_[fid];
   // 开始清理脏页 
   // CAS操作 防止重复写入
   bool expected = true;
@@ -484,12 +513,19 @@ auto BufferPoolManager::FlushPageUnsafe(page_id_t page_id) -> bool
  */
 auto BufferPoolManager::FlushPage(page_id_t page_id) -> bool 
 { 
+  frame_id_t fid = INVALID_FRAME_ID;
   bpm_latch_->lock();
   bool is_find = (page_table_.find(page_id)!=page_table_.end());
-  if(!is_find)
-    return false;
+  if(is_find){
+    fid = page_table_[page_id];
+  }
   bpm_latch_->unlock();
-  auto curframe = frames_[page_id];
+  
+  if(fid == INVALID_FRAME_ID){
+    return false;
+  }
+  auto curframe = frames_[fid];
+  // 加帧锁
   curframe->rwlatch_.lock();
   // 开始清理脏页 
   // CAS操作 防止重复写入
@@ -520,7 +556,12 @@ auto BufferPoolManager::FlushPage(page_id_t page_id) -> bool
  *
  * TODO(P1): Add implementation
  */
-void BufferPoolManager::FlushAllPagesUnsafe() { UNIMPLEMENTED("TODO(P1): Add implementation."); }
+void BufferPoolManager::FlushAllPagesUnsafe() 
+{
+   for(const auto& p:page_table_){
+    FlushPageUnsafe(p.first);
+   }
+}
 
 /**
  * @brief Flushes all page data that is in memory to disk safely.
@@ -534,7 +575,12 @@ void BufferPoolManager::FlushAllPagesUnsafe() { UNIMPLEMENTED("TODO(P1): Add imp
  *
  * TODO(P1): Add implementation
  */
-void BufferPoolManager::FlushAllPages() { UNIMPLEMENTED("TODO(P1): Add implementation."); }
+void BufferPoolManager::FlushAllPages() 
+{ 
+    for(const auto& p:page_table_){
+    FlushPage(p.first);
+   }
+}
 
 /**
  * @brief Retrieves the pin count of a page. If the page does not exist in memory, return `std::nullopt`.
@@ -563,12 +609,17 @@ void BufferPoolManager::FlushAllPages() { UNIMPLEMENTED("TODO(P1): Add implement
 auto BufferPoolManager::GetPinCount(page_id_t page_id) -> std::optional<size_t> 
 {
   std::optional<size_t> res = std::nullopt;
-  
-
+  bpm_latch_->lock();
+  if(page_table_.find(page_id)!=page_table_.end()){
+    frame_id_t fid = page_table_[page_id];
+    auto curframe = frames_[fid];
+    res = curframe->pin_count_.load();
+  }
+  bpm_latch_->unlock();
   return res;
 }
 
-void BufferPoolManager::load_datafromdisk(frame_id_t fid)const{
+void BufferPoolManager::Loaddatafromdisk(frame_id_t fid)const{
   auto newframe = frames_[fid];
   // 从磁盘加载当前页的内容
   std::promise<bool> p = disk_scheduler_->CreatePromise();

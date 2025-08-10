@@ -82,6 +82,9 @@ public:
       replacer_(std::move(replacer)),
       bpm_latch_(std::move(bpm_latch)),
       disk_scheduler_(std::move(disk_scheduler)) {};
+
+  // 默认一个初始的构造函数
+  // 派生类移动构造的时候隐式调用
   PageGuard() = default;
 
   void Flush();
@@ -93,6 +96,8 @@ public:
   auto GetData() const -> const char *;
 
   auto IsDirty() const -> bool;
+
+  virtual ~PageGuard(){Drop();};
 
 };
 /**
@@ -132,7 +137,6 @@ class ReadPageGuard: public PageGuard {
   auto As() const -> const T * {
     return reinterpret_cast<const T *>(GetData());
   }
-  ~ReadPageGuard();
 
  private:
   /** @brief Only the buffer pool manager is allowed to construct a valid `ReadPageGuard.` */
@@ -182,7 +186,6 @@ class WritePageGuard:public PageGuard {
   auto AsMut() -> T * {
     return reinterpret_cast<T *>(GetDataMut());
   }
-  ~WritePageGuard();
 
  private:
   /** @brief Only the buffer pool manager is allowed to construct a valid `WritePageGuard.` */

@@ -52,28 +52,35 @@ LRUKReplacer::LRUKReplacer(size_t num_frames, size_t k)
  */
 auto LRUKReplacer::Evict() -> std::optional<frame_id_t>
 { 
-  if(curr_size_ == 0)
+  if(curr_size_ == 0){
     return std::nullopt; 
+  }
+    
   // 拿到第一个最小频率对应的最长k距离结点
   LRUKNode* dlnode = nullptr;
   latch_.lock();
   for(const auto& it:freq_map_){
     dlnode = GetDlnode(it.second);
-    if(dlnode!=nullptr && dlnode != it.second)
+    if(dlnode!=nullptr && dlnode != it.second){
       break;
+    }
   }
-  // 删除并记录信息
-  frame_id_t res = dlnode->fid_;
+  // 记录删除信息
+  frame_id_t frame_id = dlnode->fid_;
   int fq = dlnode->history_.size();
-  // 从所有的map里删除 
-  Remove(res);
+  // 从频率map里删除 
+  RemoveNodeinFreqmap(dlnode);
+  delete (dlnode);
+  node_store_.erase(frame_id);
+
   // 检查被淘汰的节点访问频率是否存在
   if(Isemptynodelist(freq_map_[fq])){
+    delete freq_map_[fq];
     freq_map_.erase(fq);
   }
   curr_size_ -= 1;
   latch_.unlock();
-  return res;
+  return frame_id;
 }
 
 /**
@@ -92,14 +99,14 @@ auto LRUKReplacer::Evict() -> std::optional<frame_id_t>
 void LRUKReplacer::RecordAccess(frame_id_t frame_id, [[maybe_unused]] AccessType access_type)
 {
   latch_.lock();
-  BUSTUB_ASSERT(!Validframe_id(frame_id), "Invalid frame id!");
+  BUSTUB_ASSERT(!Validframeid(frame_id), "Invalid frame id!");
   // 获取当前时间戳
   auto nowt = std::chrono::system_clock::now();
   current_timestamp_ = static_cast<ll>(std::chrono::
     duration_cast<std::chrono::microseconds>(nowt.time_since_epoch()).count());
   
   if(node_store_.find(frame_id) != node_store_.end()){
-    LRUKNode* node = node_store_[frame_id];
+    auto node = node_store_[frame_id];
     int fq = node->history_.size();
     node->Updatehistory(current_timestamp_);
     RemoveNodeinFreqmap(node);
@@ -110,7 +117,7 @@ void LRUKReplacer::RecordAccess(frame_id_t frame_id, [[maybe_unused]] AccessType
     }
   }
   else{
-    LRUKNode* newnode = new LRUKNode(k_,frame_id);
+    auto newnode = new LRUKNode(k_,frame_id);
     newnode->history_.push_back(current_timestamp_);
     node_store_[frame_id] = newnode;
     PutnodeinFreqmap(newnode);
@@ -137,9 +144,10 @@ void LRUKReplacer::RecordAccess(frame_id_t frame_id, [[maybe_unused]] AccessType
  */
 void LRUKReplacer::SetEvictable(frame_id_t frame_id, bool set_evictable) {
 
-    BUSTUB_ASSERT(!Validframe_id(frame_id), "Invalid frame id!");
-    if (node_store_.find(frame_id) == node_store_.end()) 
+    BUSTUB_ASSERT(!Validframeid(frame_id), "Invalid frame id!");
+    if (node_store_.find(frame_id) == node_store_.end()) {
       return;
+    }
     LRUKNode* cur_node = node_store_[frame_id];
 
     latch_.lock();
@@ -169,8 +177,9 @@ void LRUKReplacer::SetEvictable(frame_id_t frame_id, bool set_evictable) {
  */
 void LRUKReplacer::Remove(frame_id_t frame_id)
  {
-  if(node_store_.find(frame_id) == node_store_.end())
+  if(node_store_.find(frame_id) == node_store_.end()){
     return;
+  }
   latch_.lock();
   LRUKNode* dlnode = node_store_[frame_id];
   BUSTUB_ASSERT(dlnode->is_evictable_, "This frame can not remove!");
@@ -192,18 +201,18 @@ auto LRUKReplacer::Size() -> size_t
   return curr_size_; 
 }
 
-bool LRUKReplacer::Validframe_id(frame_id_t frame_id){
+auto LRUKReplacer::Validframeid(frame_id_t frame_id)const->bool{
   return frame_id < 0 || static_cast<size_t>(frame_id) > replacer_size_;
 }
 
-bool LRUKReplacer::Isemptynodelist(LRUKNode* head){
+auto LRUKReplacer::Isemptynodelist(LRUKNode* head)const->bool{
   return head->next_ == head;
 }
 
 void LRUKReplacer::PutnodeinFreqmap(LRUKNode* newnode){
     int fq = newnode->history_.size();
     if(freq_map_.find(fq) == freq_map_.end()){
-      LRUKNode* head = new LRUKNode();
+      auto* head = new LRUKNode();
       head->next_ = head,head->prev_ = head;
       freq_map_[fq] = head;
     }
@@ -212,16 +221,19 @@ void LRUKReplacer::PutnodeinFreqmap(LRUKNode* newnode){
 }
 
 void LRUKReplacer::RemoveNodeinFreqmap(LRUKNode* dlnode){
-  LRUKNode* prev = dlnode->prev_,*next = dlnode->next_;
+  auto prev = dlnode->prev_;
+  auto next = dlnode->next_;
   prev->next_ = next;
   next->prev_ = prev;
 }
 
-LRUKNode* LRUKReplacer::GetDlnode(LRUKNode* head)
+auto LRUKReplacer::GetDlnode(LRUKNode* head)->LRUKNode*
 {
   LRUKNode* pos = head->prev_;
-  while(pos != head && pos->is_evictable_ != true)
+  while(pos != head && !pos->is_evictable_){
     pos = pos->prev_;
+  }
+    
   return pos;
 }
 

@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <limits>
 #include <list>
 #include <mutex>  // NOLINT
@@ -27,7 +28,7 @@ namespace bustub {
 
 enum class AccessType { Unknown = 0, Lookup, Scan, Index };
 
-typedef long long ll;
+using ll = int64_t;
 
 class LRUKNode {
  public:
@@ -73,7 +74,14 @@ class LRUKReplacer {
    *
    * @brief Destroys the LRUReplacer.
    */
-  ~LRUKReplacer() = default;
+  ~LRUKReplacer() {
+    for (auto &p : node_store_) {
+      delete p.second;
+    }
+    for(auto&p:freq_map_){
+      delete p.second;
+    }
+  };
 
   auto Evict() -> std::optional<frame_id_t>;
 
@@ -100,13 +108,13 @@ class LRUKReplacer {
   std::map<int, LRUKNode*> freq_map_;
   
   // 检测帧id是否合法
-  bool Validframe_id(frame_id_t frame_id);
+  auto Validframeid(frame_id_t frame_id)const->bool;
   // 检查频率链表是否为空
-  bool Isemptynodelist(LRUKNode* head);
+  auto Isemptynodelist(LRUKNode* head)const->bool;
   // 往频率链表添加新节点
   void PutnodeinFreqmap(LRUKNode* newnode);
   // 获取频率链表待删除节点
-  LRUKNode* GetDlnode(LRUKNode* head);
+  auto GetDlnode(LRUKNode* head)->LRUKNode*;
   // 删除频率链表指定节点
   void RemoveNodeinFreqmap(LRUKNode* dlnode);
   // 往节点后添加新节点

@@ -64,13 +64,18 @@ void DiskScheduler::StartWorkerThread()
   while(true){
     auto task = request_queue_.Get();
     if(task.has_value()){
-      if(task->is_write_)
+      if(task->is_write_){
         disk_manager_->WritePage(task->page_id_,task->data_);
-      else disk_manager_->ReadPage(task->page_id_, task->data_);
+      }
+      else {
+        disk_manager_->ReadPage(task->page_id_, task->data_);
+      }
       task->callback_.set_value(true);
     }
     // 析构时退出
-    else break;
+    else{
+        break;
+    }
   }
 }
 
