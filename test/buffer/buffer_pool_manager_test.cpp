@@ -393,7 +393,6 @@ TEST(BufferPoolManagerTest, EvictableTest) {
 
         // Read the page in shared mode.
         const auto read_guard = bpm->ReadPage(winner_pid);
-
         // Since the only frame is pinned, no thread should be able to bring in a new page.
         ASSERT_FALSE(bpm->CheckedReadPage(loser_pid).has_value());
       });

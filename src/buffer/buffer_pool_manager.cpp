@@ -364,13 +364,14 @@ auto BufferPoolManager::CheckedReadPage(page_id_t page_id, AccessType access_typ
       res = std::move(rguard);
     }
     else{
+      // 淘汰的策略是只有不被占用的帧才能被淘汰
       auto evid = replacer_->Evict();
       if(evid.has_value()){
         fid = evid.value();
         auto curframe = frames_[fid];
         // 开始清理脏页 
         FlushPage(curframe->pgid_);
-        // 只有曾经的页面清理干净了才能清楚页表
+        // 只有曾经的页面清理干净了才能清除页表
         bpm_latch_->lock();
         page_table_.erase(curframe->pgid_);
         bpm_latch_->unlock();

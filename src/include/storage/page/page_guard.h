@@ -13,8 +13,10 @@
 #pragma once
 
 #include <memory>
+#include <utility>
 
 #include "buffer/buffer_pool_manager.h"
+#include "common/config.h"
 #include "storage/disk/disk_scheduler.h"
 #include "storage/page/page.h"
 
@@ -71,21 +73,27 @@ protected:
    */
   bool is_valid_{false};
 
-  bool is_readGuard_{true};
+  bool is_readguard_{true};
+
 
 public:
   // 基类构造函数 辅助派生类进行构造
   PageGuard(page_id_t page_id, std::shared_ptr<FrameHeader> frame, std::shared_ptr<LRUKReplacer> replacer,
-                         std::shared_ptr<std::mutex> bpm_latch, std::shared_ptr<DiskScheduler> disk_scheduler):
-      page_id_(page_id),
-      frame_(std::move(frame)),
-      replacer_(std::move(replacer)),
-      bpm_latch_(std::move(bpm_latch)),
-      disk_scheduler_(std::move(disk_scheduler)) {};
+                         std::shared_ptr<std::mutex> bpm_latch, std::shared_ptr<DiskScheduler> disk_scheduler);
 
-  // 默认一个初始的构造函数
-  // 派生类移动构造的时候隐式调用
+  // 派生类移动构造的时候调用
+  // 内置类型是没有移动的 等价于拷贝
+  PageGuard(PageGuard && that) noexcept;
+
+  // 基类移动赋值函数
+  auto operator=(PageGuard && that)noexcept ->PageGuard&;
+
   PageGuard() = default;
+  
+  // 禁用拷贝操作
+  PageGuard (const PageGuard&) = delete;
+  auto operator= (const PageGuard&)->PageGuard& = delete;
+
 
   void Flush();
 

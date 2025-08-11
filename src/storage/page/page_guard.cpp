@@ -15,9 +15,51 @@
 #include <future>
 #include <memory>
 #include <utility>
+#include "common/config.h"
 #include "storage/disk/disk_scheduler.h"
 
 namespace bustub {
+
+// 接口一致的基类构造函数
+PageGuard::PageGuard(page_id_t page_id, std::shared_ptr<FrameHeader> frame, std::shared_ptr<LRUKReplacer> replacer,
+                         std::shared_ptr<std::mutex> bpm_latch, std::shared_ptr<DiskScheduler> disk_scheduler):
+      page_id_(page_id),
+      frame_(std::move(frame)),
+      replacer_(std::move(replacer)),
+      bpm_latch_(std::move(bpm_latch)),
+      disk_scheduler_(std::move(disk_scheduler)) {};
+
+
+PageGuard::PageGuard(PageGuard && that) noexcept:
+  page_id_(that.page_id_),frame_(std::move(that.frame_)),
+  replacer_(std::move(that.replacer_)),bpm_latch_(std::move(that.bpm_latch_)),
+  disk_scheduler_(std::move(that.disk_scheduler_)),is_valid_(that.is_valid_),is_readguard_(that.is_readguard_)
+  {
+    that.is_valid_ = false;
+    that.page_id_ = INVALID_PAGE_ID;
+  };
+
+
+auto PageGuard::operator=(PageGuard && that)noexcept ->PageGuard&{
+  if(this !=& that){
+    if(that.is_valid_){
+      // 智能指针的好处体现出来了 无须手动释放当前资源
+      // 在移动构造赋值的时候自动释放或减少了引用计数
+      // 先释放当前页面的相关资源
+      Drop();
+      this->page_id_ = that.page_id_;
+      this->bpm_latch_ = std::move(that.bpm_latch_);
+      this->disk_scheduler_ = std::move(that.disk_scheduler_);
+      this->frame_ = std::move(that.frame_);
+      this->replacer_ = std::move(that.replacer_);
+      this->is_readguard_ = that.is_readguard_;
+      this->is_valid_ = that.is_valid_;
+      that.is_valid_ = false;
+      that.page_id_ = INVALID_PAGE_ID;
+    }
+  }
+  return *this;
+}
 
 /**
  * @brief The only constructor for an RAII `ReadPageGuard` that creates a valid guard.
@@ -40,7 +82,7 @@ ReadPageGuard::ReadPageGuard(page_id_t page_id, std::shared_ptr<FrameHeader> fra
 {
   frame_->rwlatch_.lock_shared();
   // 获取读操作的共享锁
-  is_readGuard_ = true;
+  is_readguard_ = true;
   frame_->pin_count_.fetch_add(1,std::memory_order_relaxed);
   replacer_->RecordAccess(frame_->frame_id_);
   replacer_->SetEvictable(frame_->frame_id_, false);
@@ -62,20 +104,7 @@ ReadPageGuard::ReadPageGuard(page_id_t page_id, std::shared_ptr<FrameHeader> fra
  *
  * @param that The other page guard.
  */
-ReadPageGuard::ReadPageGuard(ReadPageGuard &&that) noexcept 
-{
-  // 内置类型是没有移动的 等价于拷贝
-  if(that.is_valid_){
-    this->page_id_ = that.page_id_;
-    this->bpm_latch_ = std::move(that.bpm_latch_);
-    this->disk_scheduler_ = std::move(that.disk_scheduler_);
-    this->frame_ = std::move(that.frame_);
-    this->replacer_ = std::move(that.replacer_);
-    this->is_readGuard_ = true;
-    this->is_valid_ = that.is_valid_;
-    that.is_valid_ = false;
-  }
-}
+ReadPageGuard::ReadPageGuard(ReadPageGuard &&that) noexcept:PageGuard(std::move(that)){}
 
 /**
  * @brief The move assignment operator for `ReadPageGuard`.
@@ -94,23 +123,10 @@ ReadPageGuard::ReadPageGuard(ReadPageGuard &&that) noexcept
  * @param that The other page guard.
  * @return ReadPageGuard& The newly valid `ReadPageGuard`.
  */
-auto ReadPageGuard::operator=(ReadPageGuard &&that) noexcept -> ReadPageGuard & 
+auto ReadPageGuard::operator=(ReadPageGuard &&that) noexcept -> ReadPageGuard &
 { 
-  if(this != &that){
-    if(that.is_valid_){
-      // 智能指针的好处体现出来了 无须手动释放当前资源
-      // 在移动构造赋值的时候自动释放或减少了引用计数
-      this->page_id_ = that.page_id_;
-      this->bpm_latch_ = std::move(that.bpm_latch_);
-      this->disk_scheduler_ = std::move(that.disk_scheduler_);
-      this->frame_ = std::move(that.frame_);
-      this->replacer_ = std::move(that.replacer_);
-      this->is_readGuard_ = true;
-      this->is_valid_ = that.is_valid_;
-      that.is_valid_ = false;
-    }
-  }
-  return *this; 
+  PageGuard::operator=(std::move(that));
+  return *this;
 }
 
 /**
@@ -169,29 +185,24 @@ void PageGuard::Flush()
 void PageGuard::Drop() 
 { 
   if(is_valid_){
-    if(is_readGuard_){
-      frame_->pin_count_.fetch_sub(1,std::memory_order_relaxed);
+      frame_->pin_count_.fetch_sub(1);
       if(frame_->pin_count_.load() == 0){
+        if (is_readguard_) {
+          frame_->rwlatch_.unlock_shared();
+        } else {
+          frame_->rwlatch_.unlock();
+        }
         // 设置该页对应的帧可逐出
-        bpm_latch_->lock();
-        replacer_->SetEvictable(frame_->frame_id_, true);
-        frame_->rwlatch_.unlock_shared();
-        // 必须设置为false 防止重复释放
-        is_valid_ = false;
+        frame_->rwlatch_.lock();
+        if(frame_->pin_count_.load() == 0){
+          replacer_->SetEvictable(frame_->frame_id_, true);
+        }
+        frame_->rwlatch_.unlock();
         bpm_latch_->unlock();
       }
-    }
-    else{
-      frame_->pin_count_.fetch_sub(1,std::memory_order_relaxed);
-      if(frame_->pin_count_.load() == 0){
-        bpm_latch_->lock();
-        replacer_->SetEvictable(frame_->frame_id_, true);
-        frame_->rwlatch_.unlock();
-        is_valid_ = false;
-        bpm_latch_->unlock();    
-      }  
-            
-    }
+    // 必须设置为false 防止重复释放
+    is_valid_ = false;
+    page_id_ = INVALID_PAGE_ID;
   }
 }
 
@@ -220,7 +231,7 @@ WritePageGuard::WritePageGuard(page_id_t page_id, std::shared_ptr<FrameHeader> f
     std::move(bpm_latch), std::move(disk_scheduler))
 {
   frame_->rwlatch_.lock();
-  is_readGuard_ = false;
+  is_readguard_ = false;
   is_valid_ = true;
   frame_->pin_count_.fetch_add(1,std::memory_order_relaxed);
   replacer_->RecordAccess(frame_->frame_id_);
@@ -242,19 +253,7 @@ WritePageGuard::WritePageGuard(page_id_t page_id, std::shared_ptr<FrameHeader> f
  *
  * @param that The other page guard.
  */
-WritePageGuard::WritePageGuard(WritePageGuard &&that) noexcept 
-{
-  if(that.is_valid_){
-    this->is_valid_ = that.is_valid_;
-    this->is_readGuard_ = false;
-    that.is_valid_ = false;
-    this->page_id_ = that.page_id_;
-    this->replacer_ = std::move(that.replacer_);
-    this->frame_ = std::move(that.frame_);
-    this->bpm_latch_ = std::move(that.bpm_latch_);
-    this->disk_scheduler_ = std::move(that.disk_scheduler_);
-  }
-}
+WritePageGuard::WritePageGuard(WritePageGuard &&that) noexcept :PageGuard(std::move(that)){}
 
 /**
  * @brief The move assignment operator for `WritePageGuard`.
@@ -275,18 +274,7 @@ WritePageGuard::WritePageGuard(WritePageGuard &&that) noexcept
  */
 auto WritePageGuard::operator=(WritePageGuard &&that) noexcept -> WritePageGuard & 
 { 
-  if(this == &that){
-    if(that.is_valid_){
-      this->is_valid_ = that.is_valid_;
-      this->is_readGuard_ = false;
-      that.is_valid_ = false;
-      this->page_id_ = that.page_id_;
-      this->replacer_ = std::move(that.replacer_);
-      this->frame_ = std::move(that.frame_);
-      this->bpm_latch_ = std::move(that.bpm_latch_);
-      this->disk_scheduler_ = std::move(that.disk_scheduler_);
-    }
-  }
+  PageGuard::operator=(std::move(that));
   return *this; 
 }
 
