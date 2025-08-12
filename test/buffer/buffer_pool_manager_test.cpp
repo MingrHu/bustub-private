@@ -380,7 +380,6 @@ TEST(BufferPoolManagerTest, EvictableTest) {
     const auto winner_pid = bpm->NewPage();
     // We will attempt to load this page into the occupied frame, and it should fail every time.
     const auto loser_pid = bpm->NewPage();
-
     std::vector<std::thread> readers;
     for (size_t j = 0; j < num_readers; j++) {
       readers.emplace_back([&]() {
@@ -390,7 +389,6 @@ TEST(BufferPoolManagerTest, EvictableTest) {
         while (!signal) {
           cv.wait(lock);
         }
-
         // Read the page in shared mode.
         const auto read_guard = bpm->ReadPage(winner_pid);
         // Since the only frame is pinned, no thread should be able to bring in a new page.

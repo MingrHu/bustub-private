@@ -25,9 +25,8 @@ namespace bustub {
 class BufferPoolManager;
 class FrameHeader;
 
-
-class PageGuard{
-protected:
+class PageGuard {
+ protected:
   /** @brief The page ID of the page we are guarding. */
   page_id_t page_id_;
 
@@ -41,16 +40,16 @@ protected:
   /**
    * @brief A shared pointer to the buffer pool's replacer.
    *
-   * Since the buffer pool cannot know when this `Read/WritePageGuard` gets destructed, we maintain a pointer to the buffer
-   * pool's replacer in order to set the frame as evictable on destruction.
+   * Since the buffer pool cannot know when this `Read/WritePageGuard` gets destructed, we maintain a pointer to the
+   * buffer pool's replacer in order to set the frame as evictable on destruction.
    */
   std::shared_ptr<LRUKReplacer> replacer_;
 
   /**
    * @brief A shared pointer to the buffer pool's latch.
    *
-   * Since the buffer pool cannot know when this `Read/WritePageGuard` gets destructed, we maintain a pointer to the buffer
-   * pool's latch for when we need to update the frame's eviction state in the buffer pool replacer.
+   * Since the buffer pool cannot know when this `Read/WritePageGuard` gets destructed, we maintain a pointer to the
+   * buffer pool's latch for when we need to update the frame's eviction state in the buffer pool replacer.
    */
   std::shared_ptr<std::mutex> bpm_latch_;
 
@@ -75,25 +74,23 @@ protected:
 
   bool is_readguard_{true};
 
-
-public:
+ public:
   // 基类构造函数 辅助派生类进行构造
   PageGuard(page_id_t page_id, std::shared_ptr<FrameHeader> frame, std::shared_ptr<LRUKReplacer> replacer,
-                         std::shared_ptr<std::mutex> bpm_latch, std::shared_ptr<DiskScheduler> disk_scheduler);
+            std::shared_ptr<std::mutex> bpm_latch, std::shared_ptr<DiskScheduler> disk_scheduler);
 
   // 派生类移动构造的时候调用
   // 内置类型是没有移动的 等价于拷贝
-  PageGuard(PageGuard && that) noexcept;
+  PageGuard(PageGuard &&that) noexcept;
 
   // 基类移动赋值函数
-  auto operator=(PageGuard && that)noexcept ->PageGuard&;
+  auto operator=(PageGuard &&that) noexcept -> PageGuard &;
 
   PageGuard() = default;
-  
-  // 禁用拷贝操作
-  PageGuard (const PageGuard&) = delete;
-  auto operator= (const PageGuard&)->PageGuard& = delete;
 
+  // 禁用拷贝操作
+  PageGuard(const PageGuard &) = delete;
+  auto operator=(const PageGuard &) -> PageGuard & = delete;
 
   void Flush();
 
@@ -105,8 +102,7 @@ public:
 
   auto IsDirty() const -> bool;
 
-  virtual ~PageGuard(){Drop();};
-
+  virtual ~PageGuard() { Drop(); };
 };
 /**
  * @brief An RAII object that grants thread-safe read access to a page of data.
@@ -117,7 +113,7 @@ public:
  * With `ReadPageGuard`s, there can be multiple threads that share read access to a page's data. However, the existence
  * of any `ReadPageGuard` on a page implies that no thread can be mutating the page's data.
  */
-class ReadPageGuard: public PageGuard {
+class ReadPageGuard : public PageGuard {
   /** @brief Only the buffer pool manager is allowed to construct a valid `ReadPageGuard.` */
   // 友元类 可访问所有的成员
   friend class BufferPoolManager;
@@ -163,7 +159,7 @@ class ReadPageGuard: public PageGuard {
  * `WritePageGuard` implies that no other `WritePageGuard` or any `ReadPageGuard`s for the same page can exist at the
  * same time.
  */
-class WritePageGuard:public PageGuard {
+class WritePageGuard : public PageGuard {
   /** @brief Only the buffer pool manager is allowed to construct a valid `WritePageGuard.` */
   friend class BufferPoolManager;
 
