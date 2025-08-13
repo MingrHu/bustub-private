@@ -13,7 +13,6 @@
 #pragma once
 
 #include <memory>
-#include <utility>
 
 #include "buffer/buffer_pool_manager.h"
 #include "common/config.h"

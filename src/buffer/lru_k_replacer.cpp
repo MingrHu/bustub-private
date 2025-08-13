@@ -11,15 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "buffer/lru_k_replacer.h"
-#include <cassert>
-#include <chrono>
-#include <climits>
-#include <cstddef>
-#include <optional>
-#include <string>
-#include "common/config.h"
 #include "common/exception.h"
-#include "common/macros.h"
 
 namespace bustub {
 
@@ -105,8 +97,8 @@ auto LRUKReplacer::Evict() -> std::optional<frame_id_t> {
 void LRUKReplacer::RecordAccess(frame_id_t frame_id, [[maybe_unused]] AccessType access_type) {
   BUSTUB_ASSERT(!Validframeid(frame_id), "Invalid frame id!");
   // 更新当前时间戳
-  latch_.lock();
   auto timestamp = Updatetimestamp();
+  latch_.lock();
   // 当前帧已经有内存了
   if (node_store_.find(frame_id) != node_store_.end()) {
     auto node = node_store_[frame_id];
@@ -260,11 +252,6 @@ void LRUKReplacer::PushNode(frame_id_t fid, LRUKNode *node, size_t timestamp) {
   node_store_[fid] = node;
 }
 
-auto LRUKReplacer::Updatetimestamp() -> size_t {
-  auto nowt = std::chrono::system_clock::now();
-  current_timestamp_ =
-      static_cast<size_t>(std::chrono::duration_cast<std::chrono::microseconds>(nowt.time_since_epoch()).count());
-  return current_timestamp_.load();
-}
+auto LRUKReplacer::Updatetimestamp() -> size_t { return current_timestamp_.fetch_add(1, std::memory_order_relaxed); }
 
 }  // namespace bustub

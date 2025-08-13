@@ -11,12 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "storage/page/page_guard.h"
-#include <atomic>
-#include <future>
 #include <memory>
-#include <utility>
-#include "common/config.h"
-#include "storage/disk/disk_scheduler.h"
 
 namespace bustub {
 
@@ -79,11 +74,10 @@ ReadPageGuard::ReadPageGuard(page_id_t page_id, std::shared_ptr<FrameHeader> fra
     : PageGuard(page_id, std::move(frame), std::move(replacer), std::move(bpm_latch), std::move(disk_scheduler)) {
   // 读操作的共享锁
   frame_->rwlatch_.lock_shared();
-  bpm_latch_->lock();
+  std::scoped_lock latch(*bpm_latch_);
   // 安全的进行原子操作
   frame_->pin_count_.fetch_add(1);
   replacer_->SetEvictable(frame_->frame_id_, false);
-  bpm_latch_->unlock();
   is_valid_ = true;
   is_readguard_ = true;
   replacer_->RecordAccess(frame_->frame_id_);
@@ -161,8 +155,8 @@ void PageGuard::Flush() {
   if (!is_valid_) {
     return;
   }
-  std::lock_guard<std::mutex> guard(*bpm_latch_);
-  if (frame_->is_dirty_.load()) {
+  bool expected = true;
+  if (frame_->is_dirty_.compare_exchange_strong(expected, false)) {
     DiskRequest request{true, frame_->GetDataMut(), page_id_, std::promise<bool>{}};
     disk_scheduler_->Schedule(std::move(request));
     frame_->is_dirty_ = false;
@@ -184,21 +178,21 @@ void PageGuard::Drop() {
   if (!is_valid_) {
     return;
   }
-  bpm_latch_->lock();
-  frame_->pin_count_.fetch_sub(1);
-  // 如果引用计数为0，处理驱逐状态
-  if (frame_->pin_count_.load() == 0) {
-    replacer_->SetEvictable(frame_->frame_id_, true);
-  }
-  bpm_latch_->unlock();
-  is_valid_ = false;
-  page_id_ = INVALID_PAGE_ID;
   // 处理锁
   if (is_readguard_) {
     frame_->rwlatch_.unlock_shared();
   } else {
     frame_->rwlatch_.unlock();
   }
+  
+  std::scoped_lock latch(*bpm_latch_);
+  frame_->pin_count_.fetch_sub(1);
+  // 如果引用计数为0，处理驱逐状态
+  if (frame_->pin_count_.load() == 0) {
+    replacer_->SetEvictable(frame_->frame_id_, true);
+  }
+  is_valid_ = false;
+  page_id_ = INVALID_PAGE_ID;
 }
 
 /**********************************************************************************************************************/
@@ -223,11 +217,10 @@ WritePageGuard::WritePageGuard(page_id_t page_id, std::shared_ptr<FrameHeader> f
                                std::shared_ptr<DiskScheduler> disk_scheduler)
     : PageGuard(page_id, std::move(frame), std::move(replacer), std::move(bpm_latch), std::move(disk_scheduler)) {
   frame_->rwlatch_.lock();
-  bpm_latch_->lock();
+  std::scoped_lock latch(*bpm_latch_);
   // 安全的进行原子操作计数
   frame_->pin_count_.fetch_add(1);
   replacer_->SetEvictable(frame_->frame_id_, false);
-  bpm_latch_->unlock();
   is_readguard_ = false;
   is_valid_ = true;
   replacer_->RecordAccess(frame_->frame_id_);

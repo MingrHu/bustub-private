@@ -6,19 +6,37 @@
 //
 // Identification: src/storage/disk/disk_scheduler.cpp
 //
-// Copyright (c) 2015-2025, Carnegie Mellon University Database Group
+// thatright (c) 2015-2025, Carnegie Mellon University Database Group
 //
 //===----------------------------------------------------------------------===//
 
 #include "storage/disk/disk_scheduler.h"
-#include <iostream>
-#include <optional>
-#include <thread>
 #include "common/config.h"
-#include "common/exception.h"
 #include "storage/disk/disk_manager.h"
 
 namespace bustub {
+// 四参数构造函数
+DiskRequest::DiskRequest(bool is_write, char *data, page_id_t pgid, std::promise<bool> callbak)
+      : is_write_(is_write), data_(data), page_id_(pgid), callback_(std::move(callbak)){};
+
+// 移动构造函数
+DiskRequest::DiskRequest(DiskRequest&& that)noexcept{
+  this->callback_ = std::move(that.callback_);
+  this->data_ = that.data_;
+  this->is_write_ = that.is_write_;
+  this->page_id_ = that.page_id_;
+}
+
+// 移动赋值函数
+auto DiskRequest::operator=(DiskRequest&& that) noexcept -> DiskRequest&{
+  if(this != &that){
+    this->callback_ = std::move(that.callback_);
+    this->data_ = that.data_;
+    this->is_write_ = that.is_write_;
+    this->page_id_ = that.page_id_;
+  }
+  return *this;
+}
 
 DiskScheduler::DiskScheduler(DiskManager *disk_manager) : disk_manager_(disk_manager) {
   // TODO(P1): remove this line after you have implemented the disk scheduler API
@@ -46,6 +64,9 @@ DiskScheduler::~DiskScheduler() {
  * @param r The request to be scheduled.
  */
 void DiskScheduler::Schedule(DiskRequest r) {
+  if(r.data_ == nullptr || r.page_id_ == INVALID_PAGE_ID){
+    return;
+  }
   std::optional<DiskRequest> opreq(std::move(r));
   request_queue_.Put(std::move(opreq));
 }

@@ -12,8 +12,6 @@
 
 #pragma once
 
-#include <cstddef>
-#include <cstdint>
 #include <limits>
 #include <list>
 #include <map>
@@ -24,7 +22,6 @@
 
 #include "common/config.h"
 #include "common/macros.h"
-#include "type/type.h"
 
 namespace bustub {
 
