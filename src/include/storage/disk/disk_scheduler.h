@@ -44,9 +44,15 @@ struct DiskRequest {
 
   DiskRequest(bool is_write, char *data, page_id_t pgid, std::promise<bool> callbak);
 
-  DiskRequest(DiskRequest&& that) noexcept;
+  DiskRequest(DiskRequest &&that) noexcept;
 
-  auto operator=(DiskRequest&& that) noexcept -> DiskRequest&;
+  DiskRequest(const DiskRequest &&copy) = delete;
+
+  auto operator=(const DiskRequest &copy) = delete;
+
+  DiskRequest() = delete;
+
+  auto operator=(DiskRequest &&that) noexcept -> DiskRequest &;
 };
 
 /**

@@ -72,15 +72,16 @@ ReadPageGuard::ReadPageGuard(page_id_t page_id, std::shared_ptr<FrameHeader> fra
                              std::shared_ptr<LRUKReplacer> replacer, std::shared_ptr<std::mutex> bpm_latch,
                              std::shared_ptr<DiskScheduler> disk_scheduler)
     : PageGuard(page_id, std::move(frame), std::move(replacer), std::move(bpm_latch), std::move(disk_scheduler)) {
-  // 读操作的共享锁
-  frame_->rwlatch_.lock_shared();
-  std::scoped_lock latch(*bpm_latch_);
   // 安全的进行原子操作
+  bpm_latch_->lock();
   frame_->pin_count_.fetch_add(1);
   replacer_->SetEvictable(frame_->frame_id_, false);
   is_valid_ = true;
   is_readguard_ = true;
+  bpm_latch_->unlock();
   replacer_->RecordAccess(frame_->frame_id_);
+  // 读操作的共享锁
+  frame_->rwlatch_.lock_shared();
 }
 
 /**
@@ -178,13 +179,14 @@ void PageGuard::Drop() {
   if (!is_valid_) {
     return;
   }
+
   // 处理锁
   if (is_readguard_) {
     frame_->rwlatch_.unlock_shared();
   } else {
     frame_->rwlatch_.unlock();
   }
-  
+
   std::scoped_lock latch(*bpm_latch_);
   frame_->pin_count_.fetch_sub(1);
   // 如果引用计数为0，处理驱逐状态
@@ -216,14 +218,15 @@ WritePageGuard::WritePageGuard(page_id_t page_id, std::shared_ptr<FrameHeader> f
                                std::shared_ptr<LRUKReplacer> replacer, std::shared_ptr<std::mutex> bpm_latch,
                                std::shared_ptr<DiskScheduler> disk_scheduler)
     : PageGuard(page_id, std::move(frame), std::move(replacer), std::move(bpm_latch), std::move(disk_scheduler)) {
-  frame_->rwlatch_.lock();
-  std::scoped_lock latch(*bpm_latch_);
   // 安全的进行原子操作计数
+  bpm_latch_->lock();
   frame_->pin_count_.fetch_add(1);
   replacer_->SetEvictable(frame_->frame_id_, false);
   is_readguard_ = false;
   is_valid_ = true;
+  bpm_latch_->unlock();
   replacer_->RecordAccess(frame_->frame_id_);
+  frame_->rwlatch_.lock();
 }
 
 /**

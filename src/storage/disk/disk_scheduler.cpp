@@ -17,10 +17,10 @@
 namespace bustub {
 // 四参数构造函数
 DiskRequest::DiskRequest(bool is_write, char *data, page_id_t pgid, std::promise<bool> callbak)
-      : is_write_(is_write), data_(data), page_id_(pgid), callback_(std::move(callbak)){};
+    : is_write_(is_write), data_(data), page_id_(pgid), callback_(std::move(callbak)){};
 
 // 移动构造函数
-DiskRequest::DiskRequest(DiskRequest&& that)noexcept{
+DiskRequest::DiskRequest(DiskRequest &&that) noexcept {
   this->callback_ = std::move(that.callback_);
   this->data_ = that.data_;
   this->is_write_ = that.is_write_;
@@ -28,8 +28,8 @@ DiskRequest::DiskRequest(DiskRequest&& that)noexcept{
 }
 
 // 移动赋值函数
-auto DiskRequest::operator=(DiskRequest&& that) noexcept -> DiskRequest&{
-  if(this != &that){
+auto DiskRequest::operator=(DiskRequest &&that) noexcept -> DiskRequest & {
+  if (this != &that) {
     this->callback_ = std::move(that.callback_);
     this->data_ = that.data_;
     this->is_write_ = that.is_write_;
@@ -64,7 +64,7 @@ DiskScheduler::~DiskScheduler() {
  * @param r The request to be scheduled.
  */
 void DiskScheduler::Schedule(DiskRequest r) {
-  if(r.data_ == nullptr || r.page_id_ == INVALID_PAGE_ID){
+  if (r.data_ == nullptr || r.page_id_ == INVALID_PAGE_ID) {
     return;
   }
   std::optional<DiskRequest> opreq(std::move(r));

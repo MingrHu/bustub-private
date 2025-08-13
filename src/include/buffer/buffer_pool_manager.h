@@ -129,7 +129,7 @@ class BufferPoolManager {
   void FlushAllPages();
   auto GetPinCount(page_id_t page_id) -> std::optional<size_t>;
   void Loaddatafromdisk(frame_id_t fid) const;
-  void Cleandirtyframe(std::shared_ptr<FrameHeader> &curframe);
+  void Cleandirtyframe(std::shared_ptr<FrameHeader> &curframe, page_id_t oldpgid);
 
  private:
   /** @brief The number of frames in the buffer pool. */
