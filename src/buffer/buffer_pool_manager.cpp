@@ -12,6 +12,7 @@
 
 #include "buffer/buffer_pool_manager.h"
 #include "common/config.h"
+#include "common/macros.h"
 
 namespace bustub {
 
@@ -221,70 +222,65 @@ auto BufferPoolManager::CheckedWritePage(page_id_t page_id, AccessType access_ty
   bpm_latch_->lock();
   if (page_table_.find(page_id) != page_table_.end()) {
     fid = page_table_[page_id];
-  }
-  bpm_latch_->unlock();
-
-  // 如果这个页面ID对应的帧存在于内存中
-  if (fid != INVALID_FRAME_ID) {
     auto cur_frame = frames_[fid];
     WritePageGuard wguard(page_id, cur_frame, replacer_, bpm_latch_, disk_scheduler_);
     res = std::move(wguard);
-  } else {
-    bpm_latch_->lock();
+  }
+  else 
+  {
     // 尝试获取空闲的新帧
     if (!free_frames_.empty()) {
       fid = free_frames_.front();
       free_frames_.pop_front();
     }
-    bpm_latch_->unlock();
 
     // 如果获取到了空闲帧 pin_count = 0
+    // 空闲帧就是没有任何数据以及被映射的帧
     // 这里的空闲帧获取保证不会有别的线程
     // 破坏数据 因此不必加全局锁
     if (fid != INVALID_FRAME_ID) {
-      bpm_latch_->lock();
       // 对帧元数据进行操作
       auto newframe = frames_[fid];
       // 记录一下新拿到的帧对应的当前页号
       newframe->pgid_ = page_id;
-      bpm_latch_->unlock();
 
-      // 从磁盘加载当前页的内容
-      Loaddatafromdisk(fid);
+      // 从磁盘尝试加载当前页的内容
+      Loaddatafromdisk(fid, INVALID_PAGE_ID);
       // 创建写保护对象 会自动对帧引用计数 自动记录访问
+      // 映射页表
+      page_table_[page_id] = fid;
       // 这里面发生解锁
       WritePageGuard wguard(page_id, newframe, replacer_, bpm_latch_, disk_scheduler_);
-
-      page_table_[page_id] = fid;
       res = std::move(wguard);
     }
-    // 否则去寻找可驱逐的帧
-    else {
+    // 去寻找可驱逐的帧
+    else 
+    {
       // Evict已经是线程安全的 保证被驱逐的不会被线程占用
-      bpm_latch_->lock();
       auto evid = replacer_->Evict();
       if (!evid.has_value()) {
+        // 没找到直接解锁
         bpm_latch_->unlock();
-      } else {
+      } 
+      else 
+      {
         // 对帧元数据进行操作
         fid = evid.value();
         auto curframe = frames_[fid];
-        // 清除页表
+        // 清除页表 保证别的线程即使拿到了pgid也无法访问帧
         page_table_.erase(curframe->pgid_);
         auto oldpgid = curframe->pgid_;
         // 更新帧和页的绑定
         curframe->pgid_ = page_id;
-        bpm_latch_->unlock();
         // 开始清理脏页
         Cleandirtyframe(curframe, oldpgid);
         // 从磁盘加载页的内容
-        Loaddatafromdisk(fid);
+        Loaddatafromdisk(fid, oldpgid);
+        // 内容同步成功后新建映射
+        page_table_[page_id] = fid;
         // 确保别的操作执行完成后才能开始接下来的操作
         // 且由于当前操作有帧锁 因此后续对帧操作是安全的
         WritePageGuard wguard(page_id, curframe, replacer_, bpm_latch_, disk_scheduler_);
-
-        // 内容同步成功后新建映射
-        page_table_[page_id] = fid;
         res = std::move(wguard);
       }
     }
@@ -322,36 +318,28 @@ auto BufferPoolManager::CheckedReadPage(page_id_t page_id, AccessType access_typ
   bpm_latch_->lock();
   if (page_table_.find(page_id) != page_table_.end()) {
     fid = page_table_[page_id];
-  }
-  bpm_latch_->unlock();
-
-  if (fid != INVALID_FRAME_ID) {
     auto cur_frame = frames_[fid];
     ReadPageGuard rguard{page_id, cur_frame, replacer_, bpm_latch_, disk_scheduler_};
     res = std::move(rguard);
-  } else {
-    bpm_latch_->lock();
+  }
+  else 
+  {
     if (!free_frames_.empty()) {
       fid = free_frames_.front();
       free_frames_.pop_front();
     }
-    bpm_latch_->unlock();
 
     // 找到合适的空闲帧
     if (fid != INVALID_FRAME_ID) {
-      bpm_latch_->lock();
       auto newframe = frames_[fid];
       newframe->pgid_ = page_id;
-      bpm_latch_->unlock();
-
-      Loaddatafromdisk(fid);
-      ReadPageGuard rguard{page_id, newframe, replacer_, bpm_latch_, disk_scheduler_};
+      Loaddatafromdisk(fid, INVALID_PAGE_ID);
       page_table_[page_id] = fid;
-
+      ReadPageGuard rguard{page_id, newframe, replacer_, bpm_latch_, disk_scheduler_};
       res = std::move(rguard);
-    } else {
-      // 从这里开始加锁是因为防止别的线程访问了被淘汰的帧
-      bpm_latch_->lock();
+    } 
+    else 
+    {
       // 淘汰的策略是只有不被占用的帧才能被淘汰
       auto evid = replacer_->Evict();
       if (!evid.has_value()) {
@@ -365,15 +353,14 @@ auto BufferPoolManager::CheckedReadPage(page_id_t page_id, AccessType access_typ
         auto oldpgid = curframe->pgid_;
         // 更新帧和页的绑定
         curframe->pgid_ = page_id;
-        bpm_latch_->unlock();
         // 开始清理脏页
         Cleandirtyframe(curframe, oldpgid);
         // 设置当前帧
         // 从磁盘加载页的内容
-        Loaddatafromdisk(fid);
-        ReadPageGuard rguard{page_id, curframe, replacer_, bpm_latch_, disk_scheduler_};
+        Loaddatafromdisk(fid, oldpgid);
         // 新建页表
         page_table_[page_id] = fid;
+        ReadPageGuard rguard{page_id, curframe, replacer_, bpm_latch_, disk_scheduler_};
         res = std::move(rguard);
       }
     }
@@ -583,17 +570,21 @@ auto BufferPoolManager::GetPinCount(page_id_t page_id) -> std::optional<size_t> 
   return res;
 }
 
-void BufferPoolManager::Loaddatafromdisk(frame_id_t fid) const {
+void BufferPoolManager::Loaddatafromdisk(frame_id_t fid, page_id_t oldpgid) const {
   auto newframe = frames_[fid];
+  // 如果请求页就是当前帧的页号 说明帧本身已经有数据了
+  // 无需重复再从磁盘加载数据
+  if (oldpgid == newframe->pgid_) {
+    return;
+  }
   // 从磁盘加载当前页的内容
   std::promise<bool> p = disk_scheduler_->CreatePromise();
   std::future<bool> ft = p.get_future();
   DiskRequest read{false, newframe->GetDataMut(), newframe->pgid_, std::move(p)};
   disk_scheduler_->Schedule(std::move(read));
-  // 循环等待写完
-  while (!ft.get()) {
-    std::this_thread::yield();
-  }
+  // 等待写完
+  bool res = ft.get();
+  BUSTUB_ASSERT(res, "Loaddata from disk failed!");
 }
 
 void BufferPoolManager::Cleandirtyframe(std::shared_ptr<FrameHeader> &curframe, page_id_t oldpgid) {
@@ -606,9 +597,8 @@ void BufferPoolManager::Cleandirtyframe(std::shared_ptr<FrameHeader> &curframe, 
     std::future<bool> ft = p.get_future();
     DiskRequest write{true, curframe->GetDataMut(), oldpgid, std::move(p)};
     disk_scheduler_->Schedule(std::move(write));
-    while (!ft.get()) {
-      std::this_thread::yield();
-    }
+    bool res = ft.get();
+    BUSTUB_ASSERT(res, "Clean dirty data failed!");
   }
 }
 

@@ -428,4 +428,29 @@ TEST(BufferPoolManagerTest, EvictableTest) {
   }
 }
 
+TEST(BufferPoolManagerTest, MyCustomTest) {
+  auto disk_manager = std::make_shared<DiskManager>(db_fname);
+  auto bpm = std::make_shared<BufferPoolManager>(FRAMES, disk_manager.get(), K_DIST);
+
+  auto pid0 = bpm->NewPage();
+  {
+    auto guard0 = bpm->WritePage(pid0);
+    char str[] = "Hello world!";
+    char *data = guard0.GetDataMut();
+    snprintf(data, sizeof(str), "%s", str);
+    auto pin = bpm->GetPinCount(pid0);
+    ASSERT_EQ(1, pin);
+  }
+
+  {
+    auto guard1 = bpm->ReadPage(pid0);
+    auto guard2 = bpm->ReadPage(pid0);
+    auto pin = bpm->GetPinCount(pid0);
+    // This explains that pin count is not just
+    // `The pin count of a frame is the number of threads that have access to the page's data.`
+    // said in project #1 instruction.
+    ASSERT_EQ(2, pin);
+  }
+}
+
 }  // namespace bustub

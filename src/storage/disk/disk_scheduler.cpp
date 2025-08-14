@@ -11,6 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "storage/disk/disk_scheduler.h"
+#include <utility>
 #include "common/config.h"
 #include "storage/disk/disk_manager.h"
 
@@ -81,14 +82,15 @@ void DiskScheduler::Schedule(DiskRequest r) {
  */
 void DiskScheduler::StartWorkerThread() {
   while (true) {
-    auto task = request_queue_.Get();
-    if (task.has_value()) {
-      if (task->is_write_) {
-        disk_manager_->WritePage(task->page_id_, task->data_);
+    auto task_opt = request_queue_.Get();
+    if (task_opt.has_value()) {
+      auto task = std::move(task_opt.value());
+      if (task.is_write_) {
+        disk_manager_->WritePage(task.page_id_, task.data_);
       } else {
-        disk_manager_->ReadPage(task->page_id_, task->data_);
+        disk_manager_->ReadPage(task.page_id_, task.data_);
       }
-      task->callback_.set_value(true);
+      task.callback_.set_value(true);
     }
     // 析构时退出
     else {
