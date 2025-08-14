@@ -42,7 +42,7 @@ struct DiskRequest {
   /** Callback used to signal to the request issuer when the request has been completed. */
   std::promise<bool> callback_;
 
-  DiskRequest(bool is_write, char *data, page_id_t pgid, std::promise<bool> callbak);
+  DiskRequest(bool is_write, char *data, page_id_t page_id, std::promise<bool> callbak);
 
   DiskRequest(DiskRequest &&that) noexcept;
 

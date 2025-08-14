@@ -11,21 +11,24 @@
 //===----------------------------------------------------------------------===//
 
 #include "storage/disk/disk_scheduler.h"
+#include <optional>
 #include <utility>
 #include "common/config.h"
 #include "storage/disk/disk_manager.h"
 
 namespace bustub {
 // 四参数构造函数
-DiskRequest::DiskRequest(bool is_write, char *data, page_id_t pgid, std::promise<bool> callbak)
-    : is_write_(is_write), data_(data), page_id_(pgid), callback_(std::move(callbak)){};
+DiskRequest::DiskRequest(bool is_write, char *data, page_id_t page_id, std::promise<bool> callbak)
+    : is_write_(is_write), data_(data), page_id_(page_id), callback_(std::move(callbak)){};
 
 // 移动构造函数
 DiskRequest::DiskRequest(DiskRequest &&that) noexcept {
   this->callback_ = std::move(that.callback_);
   this->data_ = that.data_;
+  that.data_ = nullptr;
   this->is_write_ = that.is_write_;
   this->page_id_ = that.page_id_;
+  that.page_id_ = INVALID_PAGE_ID;
 }
 
 // 移动赋值函数
@@ -33,8 +36,10 @@ auto DiskRequest::operator=(DiskRequest &&that) noexcept -> DiskRequest & {
   if (this != &that) {
     this->callback_ = std::move(that.callback_);
     this->data_ = that.data_;
+    that.data_ = nullptr;
     this->is_write_ = that.is_write_;
     this->page_id_ = that.page_id_;
+    that.page_id_ = INVALID_PAGE_ID;
   }
   return *this;
 }
@@ -65,12 +70,7 @@ DiskScheduler::~DiskScheduler() {
  * @param r The request to be scheduled.
  */
 void DiskScheduler::Schedule(DiskRequest r) {
-  if (r.data_ == nullptr || r.page_id_ == INVALID_PAGE_ID) {
-    r.callback_.set_value(false);
-    return;
-  }
-  std::optional<DiskRequest> opreq(std::move(r));
-  request_queue_.Put(std::move(opreq));
+  request_queue_.Put(std::make_optional(std::move(r)));
 }
 
 /**
@@ -82,22 +82,15 @@ void DiskScheduler::Schedule(DiskRequest r) {
  * return until ~DiskScheduler() is called. At that point you need to make sure that the function does return.
  */
 void DiskScheduler::StartWorkerThread() {
-  while (true) {
-    auto task_opt = request_queue_.Get();
-    if (task_opt.has_value()) {
-      auto task = std::move(task_opt.value());
-      if (task.is_write_) {
-        disk_manager_->WritePage(task.page_id_, task.data_);
-      } else {
-        disk_manager_->ReadPage(task.page_id_, task.data_);
-      }
-      task.callback_.set_value(true);
+  std::optional<DiskRequest> request;
+    while((request = request_queue_.Get(), request.has_value())){
+        if(request->is_write_){
+            disk_manager_->WritePage(request->page_id_, request->data_);
+        }else{
+            disk_manager_->ReadPage(request->page_id_, request->data_);
+        }
+        request->callback_.set_value(true);
     }
-    // 析构时退出
-    else {
-      break;
-    }
-  }
 }
 
 }  // namespace bustub
