@@ -74,7 +74,7 @@ BufferPoolManager::BufferPoolManager(size_t num_frames, DiskManager *disk_manage
       next_page_id_(0),
       bpm_latch_(std::make_shared<std::mutex>()),
       replacer_(std::make_shared<LRUKReplacer>(num_frames, k_dist)),
-      disk_scheduler_(std::make_shared<DiskScheduler>(disk_manager)),
+      disk_scheduler_(std::make_unique<DiskScheduler>(disk_manager)),
       log_manager_(log_manager) {
   // Not strictly necessary...
   std::scoped_lock latch(*bpm_latch_);
@@ -410,13 +410,10 @@ auto BufferPoolManager::ReadPage(page_id_t page_id, AccessType access_type) -> R
 }
 
 /**
- * @brief Flushes a page's data out to disk unsafely.
+ * @brief Flushes a page's data out to disk.
  *
  * This function will write out a page's data to disk if it has been modified. If the given page is not in memory, this
  * function will return `false`.
- *
- * You should not take a lock on the page in this function.
- * This means that you should carefully consider when to toggle the `is_dirty_` bit.
  *
  * ### Implementation
  *

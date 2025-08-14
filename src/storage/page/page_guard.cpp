@@ -11,7 +11,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "storage/page/page_guard.h"
-#include <memory>
 
 namespace bustub {
 
@@ -66,7 +65,6 @@ auto PageGuard::operator=(PageGuard &&that) noexcept -> PageGuard & {
  * @param frame A shared pointer to the frame that holds the page we want to protect.
  * @param replacer A shared pointer to the buffer pool manager's replacer.
  * @param bpm_latch A shared pointer to the buffer pool manager's latch.
- * @param disk_scheduler A shared pointer to the buffer pool manager's disk scheduler.
  */
 ReadPageGuard::ReadPageGuard(page_id_t page_id, std::shared_ptr<FrameHeader> frame,
                              std::shared_ptr<LRUKReplacer> replacer, std::shared_ptr<std::mutex> bpm_latch,
@@ -210,7 +208,6 @@ void PageGuard::Drop() {
  * @param frame A shared pointer to the frame that holds the page we want to protect.
  * @param replacer A shared pointer to the buffer pool manager's replacer.
  * @param bpm_latch A shared pointer to the buffer pool manager's latch.
- * @param disk_scheduler A shared pointer to the buffer pool manager's disk scheduler.
  */
 WritePageGuard::WritePageGuard(page_id_t page_id, std::shared_ptr<FrameHeader> frame,
                                std::shared_ptr<LRUKReplacer> replacer, std::shared_ptr<std::mutex> bpm_latch,
