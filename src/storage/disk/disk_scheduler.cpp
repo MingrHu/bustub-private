@@ -66,6 +66,7 @@ DiskScheduler::~DiskScheduler() {
  */
 void DiskScheduler::Schedule(DiskRequest r) {
   if (r.data_ == nullptr || r.page_id_ == INVALID_PAGE_ID) {
+    r.callback_.set_value(false);
     return;
   }
   std::optional<DiskRequest> opreq(std::move(r));

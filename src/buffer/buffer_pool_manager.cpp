@@ -225,9 +225,7 @@ auto BufferPoolManager::CheckedWritePage(page_id_t page_id, AccessType access_ty
     auto cur_frame = frames_[fid];
     WritePageGuard wguard(page_id, cur_frame, replacer_, bpm_latch_, disk_scheduler_);
     res = std::move(wguard);
-  }
-  else 
-  {
+  } else {
     // 尝试获取空闲的新帧
     if (!free_frames_.empty()) {
       fid = free_frames_.front();
@@ -254,16 +252,13 @@ auto BufferPoolManager::CheckedWritePage(page_id_t page_id, AccessType access_ty
       res = std::move(wguard);
     }
     // 去寻找可驱逐的帧
-    else 
-    {
+    else {
       // Evict已经是线程安全的 保证被驱逐的不会被线程占用
       auto evid = replacer_->Evict();
       if (!evid.has_value()) {
         // 没找到直接解锁
         bpm_latch_->unlock();
-      } 
-      else 
-      {
+      } else {
         // 对帧元数据进行操作
         fid = evid.value();
         auto curframe = frames_[fid];
@@ -321,9 +316,7 @@ auto BufferPoolManager::CheckedReadPage(page_id_t page_id, AccessType access_typ
     auto cur_frame = frames_[fid];
     ReadPageGuard rguard{page_id, cur_frame, replacer_, bpm_latch_, disk_scheduler_};
     res = std::move(rguard);
-  }
-  else 
-  {
+  } else {
     if (!free_frames_.empty()) {
       fid = free_frames_.front();
       free_frames_.pop_front();
@@ -337,9 +330,7 @@ auto BufferPoolManager::CheckedReadPage(page_id_t page_id, AccessType access_typ
       page_table_[page_id] = fid;
       ReadPageGuard rguard{page_id, newframe, replacer_, bpm_latch_, disk_scheduler_};
       res = std::move(rguard);
-    } 
-    else 
-    {
+    } else {
       // 淘汰的策略是只有不被占用的帧才能被淘汰
       auto evid = replacer_->Evict();
       if (!evid.has_value()) {
@@ -583,8 +574,7 @@ void BufferPoolManager::Loaddatafromdisk(frame_id_t fid, page_id_t oldpgid) cons
   DiskRequest read{false, newframe->GetDataMut(), newframe->pgid_, std::move(p)};
   disk_scheduler_->Schedule(std::move(read));
   // 等待写完
-  bool res = ft.get();
-  BUSTUB_ASSERT(res, "Loaddata from disk failed!");
+  BUSTUB_ASSERT(ft.get(), "Loaddata from disk failed!");
 }
 
 void BufferPoolManager::Cleandirtyframe(std::shared_ptr<FrameHeader> &curframe, page_id_t oldpgid) {
@@ -597,8 +587,7 @@ void BufferPoolManager::Cleandirtyframe(std::shared_ptr<FrameHeader> &curframe, 
     std::future<bool> ft = p.get_future();
     DiskRequest write{true, curframe->GetDataMut(), oldpgid, std::move(p)};
     disk_scheduler_->Schedule(std::move(write));
-    bool res = ft.get();
-    BUSTUB_ASSERT(res, "Clean dirty data failed!");
+    BUSTUB_ASSERT(ft.get(), "Loaddata from disk failed!");
   }
 }
 

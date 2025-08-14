@@ -222,7 +222,7 @@ WritePageGuard::WritePageGuard(page_id_t page_id, std::shared_ptr<FrameHeader> f
   is_readguard_ = false;
   is_valid_ = true;
   bpm_latch_->unlock();
-  
+
   replacer_->RecordAccess(frame_->frame_id_);
   frame_->rwlatch_.lock();
 }
