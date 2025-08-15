@@ -119,7 +119,9 @@ auto BufferPoolManager::Size() const -> size_t { return num_frames_; }
  * @return The page ID of the newly allocated page.
  */
 auto BufferPoolManager::NewPage() -> page_id_t {  // 只负责分配新的页id 不绑定帧
-  return next_page_id_.fetch_add(1);
+  page_id_t newpage_id = next_page_id_.fetch_add(1);
+  disk_scheduler_->IncreaseDiskSpace(newpage_id);
+  return newpage_id;
 }
 
 /**
@@ -584,7 +586,7 @@ void BufferPoolManager::Cleandirtyframe(std::shared_ptr<FrameHeader> &curframe, 
     std::future<bool> ft = p.get_future();
     DiskRequest write{true, curframe->GetDataMut(), oldpgid, std::move(p)};
     disk_scheduler_->Schedule(std::move(write));
-    BUSTUB_ASSERT(ft.get(), "Loaddata from disk failed!");
+    BUSTUB_ASSERT(ft.get(), "Clean data failed!");
   }
 }
 

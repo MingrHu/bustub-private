@@ -11,6 +11,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "storage/page/page_guard.h"
+#include <future>
+#include <utility>
 
 namespace bustub {
 
@@ -154,9 +156,11 @@ void PageGuard::Flush() {
   }
   bool expected = true;
   if (frame_->is_dirty_.compare_exchange_strong(expected, false)) {
-    DiskRequest request{true, frame_->GetDataMut(), page_id_, std::promise<bool>{}};
+    std::promise<bool> p;
+    std::future<bool> ft = p.get_future();
+    DiskRequest request{true, frame_->GetDataMut(), page_id_, std::move(p)};
     disk_scheduler_->Schedule(std::move(request));
-    frame_->is_dirty_ = false;
+    ft.get();
   }
 }
 

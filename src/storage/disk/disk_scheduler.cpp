@@ -69,9 +69,7 @@ DiskScheduler::~DiskScheduler() {
  *
  * @param r The request to be scheduled.
  */
-void DiskScheduler::Schedule(DiskRequest r) {
-  request_queue_.Put(std::make_optional(std::move(r)));
-}
+void DiskScheduler::Schedule(DiskRequest r) { request_queue_.Put(std::make_optional(std::move(r))); }
 
 /**
  * TODO(P1): Add implementation
@@ -83,14 +81,14 @@ void DiskScheduler::Schedule(DiskRequest r) {
  */
 void DiskScheduler::StartWorkerThread() {
   std::optional<DiskRequest> request;
-    while((request = request_queue_.Get(), request.has_value())){
-        if(request->is_write_){
-            disk_manager_->WritePage(request->page_id_, request->data_);
-        }else{
-            disk_manager_->ReadPage(request->page_id_, request->data_);
-        }
-        request->callback_.set_value(true);
+  while ((request = request_queue_.Get(), request.has_value())) {
+    if (request->is_write_) {
+      disk_manager_->WritePage(request->page_id_, request->data_);
+    } else {
+      disk_manager_->ReadPage(request->page_id_, request->data_);
     }
+    request->callback_.set_value(true);
+  }
 }
 
 }  // namespace bustub
