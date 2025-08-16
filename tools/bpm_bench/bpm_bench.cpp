@@ -220,12 +220,7 @@ auto main(int argc, char **argv) -> int {
     {
       auto guard = bpm->WritePage(page_id);
       ModifyPage(guard.GetDataMut(), i, 0);
-      // const auto *pg = reinterpret_cast<const BusTubBenchPageHeader *>(guard.GetData());
-      // std::cout<<pg->page_id_<<"-"<<page_id<<std::endl;
     }
-    // auto page = bpm->WritePage(page_id, AccessType::Scan);
-    // volatile const auto *pg = reinterpret_cast<const BusTubBenchPageHeader *>(page.GetData());
-    // std::cout<<pg->page_id_<<"+"<<page_id<<std::endl;
     page_ids.push_back(page_id);
   }
 

@@ -11,6 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "buffer/buffer_pool_manager.h"
+#include <cstring>
 #include "common/config.h"
 #include "common/macros.h"
 
@@ -573,7 +574,7 @@ void BufferPoolManager::Loaddatafromdisk(frame_id_t fid, page_id_t oldpgid) cons
   DiskRequest read{false, newframe->GetDataMut(), newframe->pgid_, std::move(p)};
   disk_scheduler_->Schedule(std::move(read));
   // 等待写完
-  BUSTUB_ASSERT(ft.get(), "Loaddata from disk failed!");
+  BUSTUB_ENSURE(ft.get(), "Loaddata from disk failed!");
 }
 
 void BufferPoolManager::Cleandirtyframe(std::shared_ptr<FrameHeader> &curframe, page_id_t oldpgid) {
@@ -586,7 +587,7 @@ void BufferPoolManager::Cleandirtyframe(std::shared_ptr<FrameHeader> &curframe, 
     std::future<bool> ft = p.get_future();
     DiskRequest write{true, curframe->GetDataMut(), oldpgid, std::move(p)};
     disk_scheduler_->Schedule(std::move(write));
-    BUSTUB_ASSERT(ft.get(), "Clean data failed!");
+    BUSTUB_ENSURE(ft.get(), "Clean data failed!");
   }
 }
 

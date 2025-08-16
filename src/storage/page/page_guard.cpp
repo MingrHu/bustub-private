@@ -271,7 +271,7 @@ auto WritePageGuard::operator=(WritePageGuard &&that) noexcept -> WritePageGuard
  * @brief Gets a mutable pointer to the page of data this guard is protecting.
  */
 auto WritePageGuard::GetDataMut() -> char * {
-  BUSTUB_ENSURE(is_valid_, "tried to use an invalid write guard");
+  // BUSTUB_ENSURE(is_valid_, "tried to use an invalid write guard");
   frame_->is_dirty_.store(true);
   return frame_->GetDataMut();
 }

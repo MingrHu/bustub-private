@@ -101,7 +101,7 @@ class PageGuard {
 
   auto IsDirty() const -> bool;
 
-  virtual ~PageGuard() { Drop(); };
+  virtual ~PageGuard() = default;
 };
 /**
  * @brief An RAII object that grants thread-safe read access to a page of data.
@@ -140,6 +140,7 @@ class ReadPageGuard : public PageGuard {
   auto As() const -> const T * {
     return reinterpret_cast<const T *>(GetData());
   }
+  ~ReadPageGuard() override { Drop(); };
 
  private:
   /** @brief Only the buffer pool manager is allowed to construct a valid `ReadPageGuard.` */
@@ -189,6 +190,8 @@ class WritePageGuard : public PageGuard {
   auto AsMut() -> T * {
     return reinterpret_cast<T *>(GetDataMut());
   }
+
+  ~WritePageGuard() override { Drop(); };
 
  private:
   /** @brief Only the buffer pool manager is allowed to construct a valid `WritePageGuard.` */
