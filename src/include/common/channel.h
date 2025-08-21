@@ -13,6 +13,7 @@
 #pragma once
 
 #include <condition_variable>  // NOLINT
+#include <cstddef>
 #include <mutex>               // NOLINT
 #include <queue>
 #include <utility>
@@ -49,6 +50,10 @@ class Channel {
     T element = std::move(q_.front());
     q_.pop();
     return element;
+  }
+
+  auto Size()->size_t{
+    return q_.size();
   }
 
  private:

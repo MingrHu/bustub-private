@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <future>
 #include <list>
 #include <memory>
 #include <shared_mutex>
@@ -97,6 +98,10 @@ class FrameHeader {
    * else in the buffer pool manager...
    */
   page_id_t pgid_{INVALID_PAGE_ID};
+
+  bool isloading_{false};
+
+  bool iswriting_{false};
 };
 
 /**
@@ -128,8 +133,8 @@ class BufferPoolManager {
   void FlushAllPagesUnsafe();
   void FlushAllPages();
   auto GetPinCount(page_id_t page_id) -> std::optional<size_t>;
-  void Loaddatafromdisk(frame_id_t fid, page_id_t oldpgid) const;
-  void Cleandirtyframe(std::shared_ptr<FrameHeader> &curframe, page_id_t oldpgid);
+  void Loaddatafromdisk(frame_id_t fid, page_id_t oldpgid,std::future<bool>& ft) const;
+  void Cleandirtyframe(std::shared_ptr<FrameHeader> &curframe, page_id_t oldpgid,std::future<bool>& ft);
 
  private:
   /** @brief The number of frames in the buffer pool. */
