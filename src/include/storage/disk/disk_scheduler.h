@@ -108,8 +108,4 @@ class DiskScheduler {
   /** The background thread responsible for issuing scheduled requests to the disk manager. */
   std::optional<std::thread> background_thread_;
 };
-
-class DiskManagerProxy {
-
-};
 }  // namespace bustub

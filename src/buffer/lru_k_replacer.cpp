@@ -96,7 +96,7 @@ auto LRUKReplacer::Evict() -> std::optional<frame_id_t> {
  * leaderboard tests.
  */
 void LRUKReplacer::RecordAccess(frame_id_t frame_id, [[maybe_unused]] AccessType access_type) {
-  // BUSTUB_ENSURE(!Validframeid(frame_id), "Invalid frame id!");
+  BUSTUB_ENSURE(!Validframeid(frame_id), "Invalid frame id!");
   // 更新当前时间戳
   auto timestamp = Updatetimestamp();
   latch_.lock();
@@ -132,7 +132,7 @@ void LRUKReplacer::RecordAccess(frame_id_t frame_id, [[maybe_unused]] AccessType
  * @param set_evictable whether the given frame is evictable or not
  */
 void LRUKReplacer::SetEvictable(frame_id_t frame_id, bool set_evictable) {
-  // BUSTUB_ENSURE(!Validframeid(frame_id), "Invalid frame id!");
+  BUSTUB_ENSURE(!Validframeid(frame_id), "Invalid frame id!");
   latch_.lock();
   if (node_store_.find(frame_id) != node_store_.end()) {
     LRUKNode *cur_node = node_store_[frame_id];

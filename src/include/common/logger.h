@@ -33,10 +33,8 @@
  * @author Hideaki
  */
 
-#include <cstdint>
 #include <ctime>
 #include <string>
-#include <chrono> // 添加的头文件
 
 namespace bustub {
 
@@ -172,42 +170,10 @@ void OutputLogHeader(const char *file, int line, const char *func, int level);
 // Output log message header in this format: [type] [file:line:function] time -
 // ex: [ERROR] [somefile.cpp:123:doSome()] 2008/07/06 10:00:00 -
 inline void OutputLogHeader(const char *file, int line, const char *func, int level) {
-  // time_t t = ::time(nullptr);
-  // tm *curTime = localtime(&t);  // NOLINT
-  // char time_str[32];            // FIXME
-  // ::strftime(time_str, 32, LOG_LOG_TIME_FORMAT, curTime);
-  // const char *type;
-  // switch (level) {
-  //   case LOG_LEVEL_ERROR:
-  //     type = "ERROR";
-  //     break;
-  //   case LOG_LEVEL_WARN:
-  //     type = "WARN ";
-  //     break;
-  //   case LOG_LEVEL_INFO:
-  //     type = "INFO ";
-  //     break;
-  //   case LOG_LEVEL_DEBUG:
-  //     type = "DEBUG";
-  //     break;
-  //   case LOG_LEVEL_TRACE:
-  //     type = "TRACE";
-  //     break;
-  //   default:
-  //     type = "UNKWN";
-  // }
-  auto now = std::chrono::system_clock::now();
-  auto now_ms = std::chrono::time_point_cast<std::chrono::milliseconds>(now);
-  auto epoch = now_ms.time_since_epoch();
-  auto value = std::chrono::duration_cast<std::chrono::milliseconds>(epoch);
-  long duration = value.count();
-  long seconds = std::chrono::duration_cast<std::chrono::seconds>(epoch).count();
-  long milliseconds = duration - (seconds * 1000);
-
-  tm *curtime = localtime(&seconds);
-  char time_str[32];
-  ::strftime(time_str, 32, "%S", curtime); /** 我们只需要秒以下的记录即可 */
-
+  time_t t = ::time(nullptr);
+  tm *curTime = localtime(&t);  // NOLINT
+  char time_str[32];            // FIXME
+  ::strftime(time_str, 32, LOG_LOG_TIME_FORMAT, curTime);
   const char *type;
   switch (level) {
     case LOG_LEVEL_ERROR:
@@ -228,10 +194,8 @@ inline void OutputLogHeader(const char *file, int line, const char *func, int le
     default:
       type = "UNKWN";
   }
-
-  ::fprintf(LOG_OUTPUT_STREAM, "%s.%03ld [%s:%d:%s] %s - ", time_str, milliseconds, file, line, func, type);
-  //// PAVLO: DO NOT CHANGE THIS
-  //::fprintf(LOG_OUTPUT_STREAM, "%s [%s:%d:%s] %s - ", time_str, file, line, func, type);
+  // PAVLO: DO NOT CHANGE THIS
+  ::fprintf(LOG_OUTPUT_STREAM, "%s [%s:%d:%s] %s - ", time_str, file, line, func, type);
 }
 
 }  // namespace bustub

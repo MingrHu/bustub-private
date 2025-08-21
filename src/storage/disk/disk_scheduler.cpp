@@ -14,7 +14,6 @@
 #include <optional>
 #include <utility>
 #include "common/config.h"
-#include "common/logger.h"
 #include "storage/disk/disk_manager.h"
 
 namespace bustub {
@@ -70,10 +69,7 @@ DiskScheduler::~DiskScheduler() {
  *
  * @param r The request to be scheduled.
  */
-void DiskScheduler::Schedule(DiskRequest r) 
-{ 
-  request_queue_.Put(std::make_optional(std::move(r))); 
-}
+void DiskScheduler::Schedule(DiskRequest r) { request_queue_.Put(std::make_optional(std::move(r))); }
 
 /**
  * TODO(P1): Add implementation
