@@ -13,6 +13,7 @@
 #include <cstdio>
 #include <filesystem>
 #include <iostream>
+#include <string>
 
 #include "buffer/buffer_pool_manager.h"
 #include "common/config.h"
@@ -35,7 +36,7 @@ void CopyString(char *dest, const std::string &src) {
 
 TEST(BufferPoolManagerTest, BPMTEST) {
   auto disk_manager = std::make_shared<DiskManager>(db_fname);
-  auto bpm = std::make_shared<BufferPoolManager>(6400, disk_manager.get(), 2);
+  auto bpm = std::make_shared<BufferPoolManager>(64, disk_manager.get(), 2);
   std::vector<page_id_t> pgvec;
   pgvec.reserve(6400);
 
@@ -44,7 +45,8 @@ TEST(BufferPoolManagerTest, BPMTEST) {
     int pgid = bpm->NewPage();
     pgvec.push_back(pgid);
     auto write = bpm->WritePage(pgid);
-    CopyString(write.GetDataMut(), "WAHTFUCK");  // 确保缓冲区足够大
+    std::string str = std::to_string(i);
+    CopyString(write.GetDataMut(), str);  // 确保缓冲区足够大
     write.Drop();
   }
 
@@ -54,9 +56,10 @@ TEST(BufferPoolManagerTest, BPMTEST) {
   auto pgvec_copy = pgvec;  // 复制到堆上
   for (int i = 0; i < 8; i++) {
     readers.emplace_back([i, pgvec_copy, bpm]() {  // 按值捕获 i 和 pgvec_copy
-      for (int j = 0; j < 6400; j++) {
-        auto read = bpm->ReadPage(pgvec_copy[i]);
-        EXPECT_STREQ(read.GetData(), "WAHTFUCK");
+      for (int j = 800 * i; j < 800*(i + 1); j++) {
+        auto read = bpm->ReadPage(pgvec_copy[j]);
+        std::string str = std::to_string(j);
+        EXPECT_STREQ(read.GetData(), str.c_str());
       }
     });
   }

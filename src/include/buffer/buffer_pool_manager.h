@@ -12,13 +12,18 @@
 
 #pragma once
 
+#include <future>
 #include <list>
 #include <memory>
+#include <mutex>
+#include <optional>
 #include <shared_mutex>
+#include <thread>
 #include <unordered_map>
 #include <vector>
 
 #include "buffer/lru_k_replacer.h"
+#include "common/channel.h"
 #include "common/config.h"
 #include "recovery/log_manager.h"
 #include "storage/disk/disk_scheduler.h"
@@ -57,6 +62,7 @@ class WritePageGuard;
  * project 2).
  */
 class FrameHeader {
+  friend class DiskManagerProxy;
   friend class BufferPoolManager;
   friend class ReadPageGuard;
   friend class WritePageGuard;
@@ -97,7 +103,55 @@ class FrameHeader {
    * else in the buffer pool manager...
    */
   page_id_t pgid_{INVALID_PAGE_ID};
+
+  bool isloading_{false};
+
+  bool iswriting_{false};
+
+  std::mutex pagecache_latch_;
 };
+
+
+class DiskManagerProxy{
+public:
+
+explicit DiskManagerProxy(std::shared_ptr<DiskScheduler>& disk_scheduler);
+
+void ScheduleProxy(std::shared_ptr<FrameHeader> &frame,bool iswrite);
+
+void Deletepagecache(std::shared_ptr<FrameHeader> &frame);
+
+~DiskManagerProxy();
+
+private:
+
+  struct ProxyFrame{
+    
+    // 防止单参数直接隐式转换为结构体对象
+    ProxyFrame(std::shared_ptr<FrameHeader>& frame,bool iswrite);
+
+    ProxyFrame(ProxyFrame&& that)noexcept;
+
+    auto operator=(ProxyFrame&& that)noexcept ->ProxyFrame&;
+
+    ProxyFrame() = default;
+
+    bool iswrite_{false};
+
+    std::shared_ptr<FrameHeader> frame_;
+  };
+
+  void WorkThread();
+
+  Channel<std::optional<ProxyFrame>> page_request_que_;
+
+  std::unordered_map<page_id_t, std::vector<char>> page_cache_;
+
+  std::shared_ptr<DiskScheduler>& disk_scheduler_;
+
+  std::optional<std::thread> workthread_;
+};
+
 
 /**
  * @brief The declaration of the `BufferPoolManager` class.
@@ -128,8 +182,8 @@ class BufferPoolManager {
   void FlushAllPagesUnsafe();
   void FlushAllPages();
   auto GetPinCount(page_id_t page_id) -> std::optional<size_t>;
-  void Loaddatafromdisk(frame_id_t fid, page_id_t oldpgid) const;
-  void Cleandirtyframe(std::shared_ptr<FrameHeader> &curframe, page_id_t oldpgid);
+  void Loaddatafromdisk(std::shared_ptr<FrameHeader> &curframe) const;
+  void Cleandirtyframe(std::shared_ptr<FrameHeader> &curframe);
 
  private:
   /** @brief The number of frames in the buffer pool. */
@@ -176,5 +230,7 @@ class BufferPoolManager {
    * stored inside of it. Additionally, you may also want to implement a helper function that returns either a shared
    * pointer to a `FrameHeader` that already has a page's data stored inside of it, or an index to said `FrameHeader`.
    */
+   std::shared_ptr<DiskManagerProxy> disk_manger_proxy_;
 };
+
 }  // namespace bustub

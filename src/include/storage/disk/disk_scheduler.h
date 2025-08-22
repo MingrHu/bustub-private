@@ -13,8 +13,11 @@
 #pragma once
 
 #include <future>  // NOLINT
+#include <mutex>
 #include <optional>
 #include <thread>  // NOLINT
+#include <unordered_map>
+#include <queue>
 
 #include "common/channel.h"
 #include "common/config.h"
@@ -64,12 +67,14 @@ struct DiskRequest {
  */
 class DiskScheduler {
  public:
+
   explicit DiskScheduler(DiskManager *disk_manager);
   ~DiskScheduler();
 
   void Schedule(DiskRequest r);
 
   void StartWorkerThread();
+  
 
   using DiskSchedulerPromise = std::promise<bool>;
 

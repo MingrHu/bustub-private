@@ -90,5 +90,4 @@ void DiskScheduler::StartWorkerThread() {
     request->callback_.set_value(true);
   }
 }
-
 }  // namespace bustub
