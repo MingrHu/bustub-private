@@ -18,6 +18,7 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <string>
 #include <thread>
 #include "common/config.h"
 #include "common/macros.h"
@@ -638,6 +639,7 @@ void DiskManagerProxy::ScheduleProxy(std::shared_ptr<FrameHeader> &frame,bool is
     frame->data_ = page_cache_[frame->pgid_];
     frame->isloading_ = false;
     pf.frame_->pagecache_latch_.unlock();
+    assert(std::stoi(frame->data_.data()) == frame->pgid_);
     return;
   }
   pf.frame_->pagecache_latch_.unlock();
