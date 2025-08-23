@@ -107,17 +107,20 @@ class FrameHeader {
   bool isloading_{false};
 
   bool iswriting_{false};
+};
 
-  std::mutex pagecache_latch_;
+class ThreadPool{
+
+  
 };
 
 
 class DiskManagerProxy{
 public:
 
-explicit DiskManagerProxy(std::shared_ptr<DiskScheduler>& disk_scheduler);
+explicit DiskManagerProxy(std::shared_ptr<DiskScheduler>& disk_scheduler,size_t init_size = 1024 * 512);
 
-void ScheduleProxy(std::shared_ptr<FrameHeader> &frame,bool iswrite);
+void ScheduleProxy(std::shared_ptr<FrameHeader> &frame,bool iswrite,page_id_t oldpgid);
 
 void Deletepagecache(std::shared_ptr<FrameHeader> &frame);
 
@@ -128,7 +131,7 @@ private:
   struct ProxyFrame{
     
     // 防止单参数直接隐式转换为结构体对象
-    ProxyFrame(std::shared_ptr<FrameHeader>& frame,bool iswrite);
+    ProxyFrame(std::shared_ptr<FrameHeader>& frame,bool iswrite,page_id_t oldpgid);
 
     ProxyFrame(ProxyFrame&& that)noexcept;
 
@@ -139,13 +142,22 @@ private:
     bool iswrite_{false};
 
     std::shared_ptr<FrameHeader> frame_;
+
+    page_id_t oldpgid_{INVALID_PAGE_ID};
   };
 
   void WorkThread();
 
-  Channel<std::optional<ProxyFrame>> page_request_que_;
-
+  // 每个页面的写队列
+  std::unordered_map<page_id_t, Channel<std::optional<ProxyFrame>>> page_write_request_que_;
+  // 每个页面的读队列
+  std::unordered_map<page_id_t, Channel<std::optional<ProxyFrame>>> page_read_request_que_;
+  // 每个页面的缓存
   std::unordered_map<page_id_t, std::vector<char>> page_cache_;
+  // 每个页面的缓存标记
+  std::unordered_map<page_id_t, bool> page_cache_valid;
+  // 每个页面的锁
+  std::unordered_map<page_id_t, std::mutex> page_mtx;
 
   std::shared_ptr<DiskScheduler>& disk_scheduler_;
 
@@ -183,7 +195,7 @@ class BufferPoolManager {
   void FlushAllPages();
   auto GetPinCount(page_id_t page_id) -> std::optional<size_t>;
   void Loaddatafromdisk(std::shared_ptr<FrameHeader> &curframe) const;
-  void Cleandirtyframe(std::shared_ptr<FrameHeader> &curframe);
+  void Cleandirtyframe(std::shared_ptr<FrameHeader> &curframe,page_id_t oldpgid);
 
  private:
   /** @brief The number of frames in the buffer pool. */

@@ -10,6 +10,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include <cstddef>
 #include <cstdio>
 #include <filesystem>
 #include <iostream>
@@ -52,11 +53,12 @@ TEST(BufferPoolManagerTest, BPMTEST) {
 
   // 启动读者线程
   std::vector<std::thread> readers;
-  readers.reserve(8);
+  size_t thread_num = 8;
+  readers.reserve(thread_num);
   auto pgvec_copy = pgvec;  // 复制到堆上
-  for (int i = 0; i < 8; i++) {
+  for (size_t i = 0; i < thread_num; i++) {
     readers.emplace_back([i, pgvec_copy, bpm]() {  // 按值捕获 i 和 pgvec_copy
-      for (int j = 800 * i; j < 800*(i + 1); j++) {
+      for (size_t j = 800 * i; j < 6400/ (i + 1); j++) {
         auto read = bpm->ReadPage(pgvec_copy[j]);
         std::string str = std::to_string(j);
         EXPECT_STREQ(read.GetData(), str.c_str());
