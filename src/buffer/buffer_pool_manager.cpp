@@ -662,7 +662,7 @@ void DiskManagerProxy::ScheduleProxy(std::shared_ptr<FrameHeader> &frame, bool i
   // 这里是一个对于frame的拷贝
   // 只有pf的oldpgid才是真正的操作pgid
   page_mtx_[oldpgid].lock();
-  ProxyFrame pf{frame, iswrite, oldpgid};
+  auto request = std::make_shared<ProxyFrame>(frame, iswrite, oldpgid);
   // 写入磁盘
   if (iswrite) {
     // 加入队列
@@ -670,14 +670,11 @@ void DiskManagerProxy::ScheduleProxy(std::shared_ptr<FrameHeader> &frame, bool i
     // 先同步缓存
     page_cache_[oldpgid] = dirty_data;
     page_cache_valid_[oldpgid] = true;
-
     page_mtx_[oldpgid].unlock();
 
     // 加入线程
     // 值传入一个dirty_data
-    thread_pool_->PushtTask([this, iswrite, oldpgid, dirty_data,pf] {
-      // 获取最早的写请求
-      ProxyFrame request = std::move(pf);
+    thread_pool_->PushtTask([this, iswrite, oldpgid, dirty_data,request] {
       std::promise<bool> p = disk_scheduler_->CreatePromise();
       std::future<bool> ft = p.get_future();
       // 创建脏页的临时拷贝数据
@@ -686,7 +683,7 @@ void DiskManagerProxy::ScheduleProxy(std::shared_ptr<FrameHeader> &frame, bool i
       disk_scheduler_->Schedule(std::move(r));
       ft.get();
 
-      request.frame_->iswriting_ = false;
+      request->frame_->iswriting_ = false;
     });
   } else {
     if (page_cache_valid_[oldpgid]) {
@@ -694,34 +691,24 @@ void DiskManagerProxy::ScheduleProxy(std::shared_ptr<FrameHeader> &frame, bool i
       frame->data_ = page_cache_[oldpgid];
       frame->isloading_ = false;
       page_mtx_[oldpgid].unlock();
+      
     } else {
-      // 否则入队列
-      page_read_request_que_[oldpgid].push(std::move(pf));
+
       page_mtx_[oldpgid].unlock();
 
-      thread_pool_->PushtTask([this, iswrite, oldpgid] {
-        std::unique_lock<std::mutex> task_lock(page_mtx_[oldpgid]);
-
-        if (page_read_request_que_[oldpgid].empty()) {
-          return;
-        }
-
-        ProxyFrame request = std::move(page_read_request_que_[oldpgid].front());
-        page_read_request_que_[oldpgid].pop();
-        task_lock.unlock();
-
+      thread_pool_->PushtTask([this, iswrite, oldpgid,request] {
         std::promise<bool> p = disk_scheduler_->CreatePromise();
         std::future<bool> ft = p.get_future();
-        DiskRequest r{iswrite, request.frame_->GetDataMut(), oldpgid, std::move(p)};
+        DiskRequest r{iswrite, request->frame_->GetDataMut(), oldpgid, std::move(p)};
         disk_scheduler_->Schedule(std::move(r));
-
         ft.get();
         // 同步缓存
-        std::lock_guard<std::mutex> cache_lock(page_mtx_[oldpgid]);
-        page_cache_[oldpgid] = request.frame_->data_;
+        page_mtx_[oldpgid].lock();
+        page_cache_[oldpgid] = request->frame_->data_;
         page_cache_valid_[oldpgid] = true;
+        page_mtx_[oldpgid].unlock();
 
-        request.frame_->isloading_ = false;
+        request->frame_->isloading_ = false;
       });
     }
   }
