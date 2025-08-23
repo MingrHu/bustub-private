@@ -58,7 +58,7 @@ TEST(BufferPoolManagerTest, BPMTEST) {
   auto pgvec_copy = pgvec;  // 复制到堆上
   for (size_t i = 0; i < thread_num; i++) {
     readers.emplace_back([i, pgvec_copy, bpm]() {  // 按值捕获 i 和 pgvec_copy
-      for (size_t j = 800 * i; j < 6400/ (i + 1); j++) {
+      for (size_t j = 800 * i; j < 6400 / (i + 1); j++) {
         auto read = bpm->ReadPage(pgvec_copy[j]);
         std::string str = std::to_string(j);
         EXPECT_STREQ(read.GetData(), str.c_str());

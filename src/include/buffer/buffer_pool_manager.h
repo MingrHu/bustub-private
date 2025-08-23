@@ -13,13 +13,16 @@
 #pragma once
 
 #include <future>
+#include <iterator>
 #include <list>
 #include <memory>
 #include <mutex>
 #include <optional>
 #include <shared_mutex>
 #include <thread>
+#include <tuple>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "buffer/lru_k_replacer.h"
@@ -109,33 +112,117 @@ class FrameHeader {
   bool iswriting_{false};
 };
 
-class ThreadPool{
+// 线程池实例化防止被多次调用
+static inline std::once_flag thread_once;
 
-  
+class ThreadPool {
+ public:
+  static auto GetInstance(int num = 32) -> std::shared_ptr<ThreadPool> {
+    std::call_once(thread_once, InitInstance, num);
+    return pool;
+  }
+
+  ThreadPool(const ThreadPool &that) = delete;
+  auto operator=(const ThreadPool &that) = delete;
+
+  explicit ThreadPool(int num) {
+    for (int i = 0; i < num; i++) {
+      threads_.emplace_back([this]() -> void {
+        while (true) {
+          // 执行的时候保护
+          std::function<void()> task;
+          {
+            std::unique_lock latch(task_que_mtx_);
+
+            cv_.wait(latch, [this]() -> bool { return (!task_que_.empty() || stop_flag_); });
+
+            if (stop_flag_ && task_que_.empty()) {
+              return;
+            }
+            task = std::move(task_que_.front());
+            task_que_.pop();
+          }
+          try {
+            task();
+          } catch (const std::exception &e) {
+            std::cerr << "线程池发生错误:" << e.what() << std::endl;
+          }
+        }
+      });
+    }
+  }
+
+  ~ThreadPool() {
+    {
+      std::unique_lock latch(task_que_mtx_);
+      stop_flag_ = true;
+    }
+
+    cv_.notify_all();
+    // 逐个等待结束
+    for (auto &thread : threads_) {
+      thread.join();
+    }
+  }
+
+  template <class Func, class... Args>
+  void PushtTask(Func &&funcname, Args &&...funcargs) {
+    // bind主要是为了生成一个新的无参无返回值的函数
+    // 和function<void()> 对应
+    // std::bind(std::forward<Func>(funcname), std::forward<Args>(funcargs)...);
+    // 更现代的打包函数方式：lamada表达式捕获参数 apply展开函数参数
+    // 从而使的参数通过完美转发可应用传递到实际的传入函数
+    auto task = [func = std::forward<Func>(funcname), args = std::make_tuple(std::forward<Args>(funcargs)...)]() {
+      return std::apply(func, args);
+    };
+
+    {
+      std::unique_lock latch(task_que_mtx_);
+      task_que_.push(std::move(task));
+    }
+    cv_.notify_one();
+  }
+
+  static auto InitInstance(int num) -> void {
+    if (pool == nullptr) {
+      pool = std::make_shared<ThreadPool>(num);
+    }
+  }
+
+ private:
+  // 单例模式线程池
+  static std::shared_ptr<ThreadPool> pool;
+
+  std::vector<std::thread> threads_;
+
+  std::queue<std::function<void()>> task_que_;
+
+  std::mutex task_que_mtx_;
+
+  std::condition_variable cv_;
+
+  bool stop_flag_{false};
 };
 
+class DiskManagerProxy {
+ public:
+  explicit DiskManagerProxy(std::shared_ptr<DiskScheduler> &disk_scheduler, size_t init_size = 1024 * 512);
 
-class DiskManagerProxy{
-public:
+  void ScheduleProxy(std::shared_ptr<FrameHeader> &frame, bool iswrite, page_id_t oldpgid,
+                     const std::vector<char> &dirty_data);
 
-explicit DiskManagerProxy(std::shared_ptr<DiskScheduler>& disk_scheduler,size_t init_size = 1024 * 512);
+  void Deletepagecache(std::shared_ptr<FrameHeader> &frame);
 
-void ScheduleProxy(std::shared_ptr<FrameHeader> &frame,bool iswrite,page_id_t oldpgid);
+  ~DiskManagerProxy() = default;
 
-void Deletepagecache(std::shared_ptr<FrameHeader> &frame);
-
-~DiskManagerProxy();
-
-private:
-
-  struct ProxyFrame{
-    
+ private:
+  struct ProxyFrame {
     // 防止单参数直接隐式转换为结构体对象
-    ProxyFrame(std::shared_ptr<FrameHeader>& frame,bool iswrite,page_id_t oldpgid);
+    ProxyFrame(std::shared_ptr<FrameHeader> &frame, bool iswrite, page_id_t oldpgid);
 
-    ProxyFrame(ProxyFrame&& that)noexcept;
+    ProxyFrame(ProxyFrame &&that) noexcept;
 
-    auto operator=(ProxyFrame&& that)noexcept ->ProxyFrame&;
+    auto operator=(ProxyFrame &&that) noexcept -> ProxyFrame &;
 
     ProxyFrame() = default;
 
@@ -146,24 +233,23 @@ private:
     page_id_t oldpgid_{INVALID_PAGE_ID};
   };
 
-  void WorkThread();
+  auto WorkThread(page_id_t oldpgid, bool iswrite) -> void;
 
   // 每个页面的写队列
-  std::unordered_map<page_id_t, Channel<std::optional<ProxyFrame>>> page_write_request_que_;
+  std::unordered_map<page_id_t, std::queue<ProxyFrame>> page_write_request_que_;
   // 每个页面的读队列
-  std::unordered_map<page_id_t, Channel<std::optional<ProxyFrame>>> page_read_request_que_;
+  std::unordered_map<page_id_t, std::queue<ProxyFrame>> page_read_request_que_;
   // 每个页面的缓存
   std::unordered_map<page_id_t, std::vector<char>> page_cache_;
   // 每个页面的缓存标记
-  std::unordered_map<page_id_t, bool> page_cache_valid;
+  std::unordered_map<page_id_t, bool> page_cache_valid_;
   // 每个页面的锁
-  std::unordered_map<page_id_t, std::mutex> page_mtx;
-
-  std::shared_ptr<DiskScheduler>& disk_scheduler_;
-
-  std::optional<std::thread> workthread_;
+  std::unordered_map<page_id_t, std::mutex> page_mtx_;
+  // 共用的disk_scheduler
+  std::shared_ptr<DiskScheduler> &disk_scheduler_;
+  // 管理的内存池
+  std::shared_ptr<ThreadPool> thread_pool_;
 };
-
 
 /**
  * @brief The declaration of the `BufferPoolManager` class.
@@ -195,7 +281,7 @@ class BufferPoolManager {
   void FlushAllPages();
   auto GetPinCount(page_id_t page_id) -> std::optional<size_t>;
   void Loaddatafromdisk(std::shared_ptr<FrameHeader> &curframe) const;
-  void Cleandirtyframe(std::shared_ptr<FrameHeader> &curframe,page_id_t oldpgid);
+  void Cleandirtyframe(std::shared_ptr<FrameHeader> &curframe, page_id_t oldpgid);
 
  private:
   /** @brief The number of frames in the buffer pool. */
@@ -242,7 +328,7 @@ class BufferPoolManager {
    * stored inside of it. Additionally, you may also want to implement a helper function that returns either a shared
    * pointer to a `FrameHeader` that already has a page's data stored inside of it, or an index to said `FrameHeader`.
    */
-   std::shared_ptr<DiskManagerProxy> disk_manger_proxy_;
+  std::shared_ptr<DiskManagerProxy> disk_manger_proxy_;
 };
 
 }  // namespace bustub
