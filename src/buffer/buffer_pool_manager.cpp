@@ -22,6 +22,7 @@
 #include <thread>
 #include <vector>
 #include "common/config.h"
+#include "common/logger.h"
 
 namespace bustub {
 
@@ -107,6 +108,7 @@ BufferPoolManager::BufferPoolManager(size_t num_frames, DiskManager *disk_manage
   }
 
   disk_manger_proxy_ = std::make_shared<DiskManagerProxy>(disk_scheduler_);
+  LOG_DEBUG("Start init bpm!\n");
 }
 
 /**
@@ -157,6 +159,7 @@ auto BufferPoolManager::NewPage() -> page_id_t {  // 只负责分配新的页id 
  * @return `false` if the page exists but could not be deleted, `true` if the page didn't exist or deletion succeeded.
  */
 auto BufferPoolManager::DeletePage(page_id_t page_id) -> bool {
+  LOG_DEBUG("Call function:DeletePage! pageid = %d\n", page_id);
   auto num = GetPinCount(page_id);
   // 不存在
   if (!num.has_value()) {
@@ -182,7 +185,7 @@ auto BufferPoolManager::DeletePage(page_id_t page_id) -> bool {
   if (curframe->pgid_ == page_id) {
     // 清除该页面所有相关信息
     // 保留帧ID
-    disk_manger_proxy_->Deletepagecache(curframe);
+    // disk_manger_proxy_->Deletepagecache(curframe);
     replacer_->Remove(fid);
     curframe->Reset();
     free_frames_.push_back(fid);
@@ -190,6 +193,7 @@ auto BufferPoolManager::DeletePage(page_id_t page_id) -> bool {
 
   disk_scheduler_->DeallocatePage(page_id);
 
+  LOG_DEBUG("Call function:Success DeletePage! pageid = %d\n", page_id);
   // 从磁盘上删除页
   return true;
 }
@@ -244,9 +248,11 @@ auto BufferPoolManager::CheckedWritePage(page_id_t page_id, AccessType access_ty
     auto cur_frame = frames_[fid];
     WritePageGuard wguard(page_id, cur_frame, replacer_, bpm_latch_, disk_scheduler_);
     // 等待当前帧 确保没有进行同步或者读取操作
+    LOG_DEBUG("Judge dead_lock in writepage start,page ID = %d\n", page_id);
     while (cur_frame->iswriting_ || cur_frame->isloading_) {
       std::this_thread::yield();
     }
+    LOG_DEBUG("Judge dead_lock in writepage end,page ID = %d\n", page_id);
     res = std::move(wguard);
   } else {
     // 尝试获取空闲的新帧
@@ -273,9 +279,11 @@ auto BufferPoolManager::CheckedWritePage(page_id_t page_id, AccessType access_ty
       page_table_[page_id] = fid;
       // 这里面发生解锁
       WritePageGuard wguard(page_id, newframe, replacer_, bpm_latch_, disk_scheduler_);
+      LOG_DEBUG("Judge dead_lock in writepage start,page ID = %d\n", page_id);
       while (newframe->iswriting_ || newframe->isloading_) {
         std::this_thread::yield();
       }
+      LOG_DEBUG("Judge dead_lock in writepage end,page ID = %d\n", page_id);
       res = std::move(wguard);
     }
     // 去寻找可驱逐的帧
@@ -297,6 +305,9 @@ auto BufferPoolManager::CheckedWritePage(page_id_t page_id, AccessType access_ty
         // 脏页必须使用脏页的pageID
         bool expected = true;
         if (curframe->is_dirty_.compare_exchange_strong(expected, false)) {
+          std::future<bool> ft;
+          std::promise<bool> p = disk_scheduler_->CreatePromise();
+          ft = p.get_future();
           Cleandirtyframe(curframe, curframe->pgid_);
         }
         // 然后再更新帧和页的绑定
@@ -313,9 +324,11 @@ auto BufferPoolManager::CheckedWritePage(page_id_t page_id, AccessType access_ty
         // 确保别的操作执行完成后才能开始接下来的操作
         // 且由于当前操作有帧锁 因此后续对帧操作是安全的
         WritePageGuard wguard(page_id, curframe, replacer_, bpm_latch_, disk_scheduler_);
+        LOG_DEBUG("Judge dead_lock in writepage start,page ID = %d\n", page_id);
         while (curframe->iswriting_ || curframe->isloading_) {
           std::this_thread::yield();
         }
+        LOG_DEBUG("Judge dead_lock in writepage end,page ID = %d\n", page_id);
         res = std::move(wguard);
       }
     }
@@ -397,6 +410,9 @@ auto BufferPoolManager::CheckedReadPage(page_id_t page_id, AccessType access_typ
         // 非脏不同步
         bool expected = true;
         if (curframe->is_dirty_.compare_exchange_strong(expected, false)) {
+          std::future<bool> ft;
+          std::promise<bool> p = disk_scheduler_->CreatePromise();
+          ft = p.get_future();
           Cleandirtyframe(curframe, curframe->pgid_);
         }
         // 然后再更新帧和页的绑定
@@ -492,12 +508,12 @@ auto BufferPoolManager::FlushPageUnsafe(page_id_t page_id) -> bool {
   }
   frame_id_t fid = page_table_[page_id];
   auto curframe = frames_[fid];
-  // 开始清理脏页
-  // CAS操作 防止重复写入
-  bool expected = true;
-  if (curframe->is_dirty_.compare_exchange_strong(expected, false)) {
-    Cleandirtyframe(curframe, curframe->pgid_);
-  }
+  // 不管该页是否dirty 都需要刷新到磁盘上
+  std::promise<bool> p = disk_scheduler_->CreatePromise();
+  std::future<bool> ft = p.get_future();
+  DiskRequest write{true, curframe->GetDataMut(), curframe->pgid_, std::move(p)};
+  disk_scheduler_->Schedule(std::move(write));
+  ft.get();
   return true;
 }
 
@@ -520,6 +536,7 @@ auto BufferPoolManager::FlushPageUnsafe(page_id_t page_id) -> bool {
  * @return `false` if the page could not be found in the page table, otherwise `true`.
  */
 auto BufferPoolManager::FlushPage(page_id_t page_id) -> bool {
+  LOG_DEBUG("Call function:FlushPage! PageID = %d\n", page_id);
   std::scoped_lock latch(*bpm_latch_);
   frame_id_t fid = INVALID_FRAME_ID;
   bool is_find = (page_table_.find(page_id) != page_table_.end());
@@ -531,12 +548,13 @@ auto BufferPoolManager::FlushPage(page_id_t page_id) -> bool {
     return false;
   }
   auto curframe = frames_[fid];
-  // 开始清理脏页
-  // CAS操作 防止重复写入
-  bool expected = true;
-  if (curframe->is_dirty_.compare_exchange_strong(expected, false)) {
-    Cleandirtyframe(curframe, curframe->pgid_);
-  }
+  // 不管该页是否dirty 都需要刷新到磁盘上
+  std::promise<bool> p = disk_scheduler_->CreatePromise();
+  std::future<bool> ft = p.get_future();
+  DiskRequest write{true, curframe->GetDataMut(), curframe->pgid_, std::move(p)};
+  disk_scheduler_->Schedule(std::move(write));
+  ft.get();
+  LOG_DEBUG("Call function END:FlushPage! PageID = %d\n", page_id);
   return true;
 }
 
@@ -602,6 +620,7 @@ void BufferPoolManager::FlushAllPages() {
  * @return std::optional<size_t> The pin count if the page exists, otherwise `std::nullopt`.
  */
 auto BufferPoolManager::GetPinCount(page_id_t page_id) -> std::optional<size_t> {
+  LOG_DEBUG("Call function:GetPinCount! page_id = %d\n", page_id);
   std::optional<size_t> res = std::nullopt;
   std::scoped_lock latch(*bpm_latch_);
   if (page_table_.find(page_id) != page_table_.end()) {
@@ -674,7 +693,7 @@ void DiskManagerProxy::ScheduleProxy(std::shared_ptr<FrameHeader> &frame, bool i
 
     // 加入线程
     // 值传入一个dirty_data
-    thread_pool_->PushtTask([this, iswrite, oldpgid, dirty_data,request] {
+    thread_pool_->PushtTask([this, iswrite, oldpgid, dirty_data, request] {
       std::promise<bool> p = disk_scheduler_->CreatePromise();
       std::future<bool> ft = p.get_future();
       // 创建脏页的临时拷贝数据
@@ -693,10 +712,9 @@ void DiskManagerProxy::ScheduleProxy(std::shared_ptr<FrameHeader> &frame, bool i
       page_mtx_[oldpgid].unlock();
       
     } else {
-
       page_mtx_[oldpgid].unlock();
 
-      thread_pool_->PushtTask([this, iswrite, oldpgid,request] {
+      thread_pool_->PushtTask([this, iswrite, oldpgid, request] {
         std::promise<bool> p = disk_scheduler_->CreatePromise();
         std::future<bool> ft = p.get_future();
         DiskRequest r{iswrite, request->frame_->GetDataMut(), oldpgid, std::move(p)};

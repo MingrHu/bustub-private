@@ -52,22 +52,37 @@ TEST(BufferPoolManagerTest, BPMTEST) {
   }
 
   // 启动读者线程
-  std::vector<std::thread> readers;
+  std::vector<std::thread> wrthread;
   size_t thread_num = 8;
-  readers.reserve(thread_num);
+  wrthread.reserve(3 *thread_num);
   auto pgvec_copy = pgvec;  // 复制到堆上
   for (size_t i = 0; i < thread_num; i++) {
-    readers.emplace_back([i, pgvec_copy, bpm]() {  // 按值捕获 i 和 pgvec_copy
+    wrthread.emplace_back([i, pgvec_copy, bpm]() {  // 按值捕获 i 和 pgvec_copy
       for (size_t j = 800 * i; j < 6400 / (i + 1); j++) {
         auto read = bpm->ReadPage(pgvec_copy[j]);
         std::string str = std::to_string(j);
         EXPECT_STREQ(read.GetData(), str.c_str());
       }
     });
+
+    wrthread.emplace_back([i, pgvec_copy, bpm]() {  // 按值捕获 i 和 pgvec_copy
+      for (size_t j = 800 * i; j < 6400 / (i + 1); j++) {
+        auto write = bpm->WritePage(pgvec_copy[j]);
+        std::string str = std::to_string(j);
+        EXPECT_STREQ(write.GetData(), str.c_str());
+      }
+    });
+
+    wrthread.emplace_back([i, pgvec_copy, bpm]() {  // 按值捕获 i 和 pgvec_copy
+      for (size_t j = 800 * i; j < 6400 / (i + 1); j++) {
+        while(!bpm->DeletePage(j)){};
+      
+        }
+    });
   }
 
   // 等待所有线程完成
-  for (auto &reader : readers) {
+  for (auto &reader : wrthread) {
     reader.join();
   }
 }
