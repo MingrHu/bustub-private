@@ -295,7 +295,8 @@ auto BufferPoolManager::CheckedWritePage(page_id_t page_id, AccessType access_ty
         // 先同步帧上的旧页面数据
         // 非脏不同步
         // 脏页必须使用脏页的pageID
-        if (curframe->is_dirty_.load()) {
+        bool expected = true;
+        if (curframe->is_dirty_.compare_exchange_strong(expected, false)) {
           Cleandirtyframe(curframe, curframe->pgid_);
         }
         // 然后再更新帧和页的绑定
@@ -356,7 +357,7 @@ auto BufferPoolManager::CheckedReadPage(page_id_t page_id, AccessType access_typ
     ReadPageGuard rguard{page_id, cur_frame, replacer_, bpm_latch_, disk_scheduler_};
     // 读页面由于不能修改数据因此
     // 只需要保证页面数据加载完成即可
-    while (cur_frame->isloading_ || cur_frame->iswriting_) {
+    while (cur_frame->isloading_) {
       std::this_thread::yield();
     }
     res = std::move(rguard);
@@ -376,7 +377,7 @@ auto BufferPoolManager::CheckedReadPage(page_id_t page_id, AccessType access_typ
       }
       page_table_[page_id] = fid;
       ReadPageGuard rguard{page_id, newframe, replacer_, bpm_latch_, disk_scheduler_};
-      while (newframe->isloading_ || newframe->iswriting_) {
+      while (newframe->isloading_) {
         std::this_thread::yield();
       }
       res = std::move(rguard);
@@ -394,7 +395,8 @@ auto BufferPoolManager::CheckedReadPage(page_id_t page_id, AccessType access_typ
 
         // 先同步帧上的旧页面数据
         // 非脏不同步
-        if (curframe->is_dirty_.load()) {
+        bool expected = true;
+        if (curframe->is_dirty_.compare_exchange_strong(expected, false)) {
           Cleandirtyframe(curframe, curframe->pgid_);
         }
         // 然后再更新帧和页的绑定
@@ -407,7 +409,7 @@ auto BufferPoolManager::CheckedReadPage(page_id_t page_id, AccessType access_typ
         // 新建页表
         page_table_[page_id] = fid;
         ReadPageGuard rguard{page_id, curframe, replacer_, bpm_latch_, disk_scheduler_};
-        while (curframe->isloading_ || curframe->iswriting_) {
+        while (curframe->isloading_) {
           std::this_thread::yield();
         }
         res = std::move(rguard);
@@ -494,10 +496,7 @@ auto BufferPoolManager::FlushPageUnsafe(page_id_t page_id) -> bool {
   // CAS操作 防止重复写入
   bool expected = true;
   if (curframe->is_dirty_.compare_exchange_strong(expected, false)) {
-    std::promise<bool> p = disk_scheduler_->CreatePromise();
-    std::future<bool> ft = p.get_future();
-    DiskRequest write{true, curframe->GetDataMut(), curframe->pgid_, std::move(p)};
-    disk_scheduler_->Schedule(std::move(write));
+    Cleandirtyframe(curframe, curframe->pgid_);
   }
   return true;
 }
@@ -536,10 +535,7 @@ auto BufferPoolManager::FlushPage(page_id_t page_id) -> bool {
   // CAS操作 防止重复写入
   bool expected = true;
   if (curframe->is_dirty_.compare_exchange_strong(expected, false)) {
-    std::promise<bool> p = disk_scheduler_->CreatePromise();
-    std::future<bool> ft = p.get_future();
-    DiskRequest write{true, curframe->GetDataMut(), curframe->pgid_, std::move(p)};
-    disk_scheduler_->Schedule(std::move(write));
+    Cleandirtyframe(curframe, curframe->pgid_);
   }
   return true;
 }
@@ -628,7 +624,6 @@ void BufferPoolManager::Loaddatafromdisk(std::shared_ptr<FrameHeader> &curframe)
 void BufferPoolManager::Cleandirtyframe(std::shared_ptr<FrameHeader> &curframe, page_id_t oldpgid) {
   // 标记此帧正在往磁盘写入数据
   curframe->iswriting_ = true;
-  curframe->is_dirty_.store(false);
   disk_manger_proxy_->ScheduleProxy(curframe, true, oldpgid, curframe->data_);
 }
 
@@ -640,8 +635,6 @@ DiskManagerProxy::DiskManagerProxy(std::shared_ptr<DiskScheduler> &disk_schedule
   page_cache_.reserve(init_size);
   page_cache_valid_.reserve(init_size);
   page_mtx_.reserve(init_size);
-  page_read_request_que_.reserve(init_size);
-  page_write_request_que_.reserve(init_size);
   // 初始化线程池
   thread_pool_ = ThreadPool::GetInstance();
 }
@@ -674,7 +667,6 @@ void DiskManagerProxy::ScheduleProxy(std::shared_ptr<FrameHeader> &frame, bool i
   if (iswrite) {
     // 加入队列
     page_cache_valid_[oldpgid] = false;
-    page_write_request_que_[oldpgid].push(std::move(pf));
     // 先同步缓存
     page_cache_[oldpgid] = dirty_data;
     page_cache_valid_[oldpgid] = true;
@@ -683,18 +675,9 @@ void DiskManagerProxy::ScheduleProxy(std::shared_ptr<FrameHeader> &frame, bool i
 
     // 加入线程
     // 值传入一个dirty_data
-    thread_pool_->PushtTask([this, iswrite, oldpgid, dirty_data] {
-      std::unique_lock<std::mutex> task_lock(page_mtx_[oldpgid]);
-
-      // 确保队列不为空
-      if (page_write_request_que_[oldpgid].empty()) {
-        return;
-      }
+    thread_pool_->PushtTask([this, iswrite, oldpgid, dirty_data,pf] {
       // 获取最早的写请求
-      ProxyFrame request = std::move(page_write_request_que_[oldpgid].front());
-      page_write_request_que_[oldpgid].pop();
-
-      task_lock.unlock();
+      ProxyFrame request = std::move(pf);
       std::promise<bool> p = disk_scheduler_->CreatePromise();
       std::future<bool> ft = p.get_future();
       // 创建脏页的临时拷贝数据

@@ -235,10 +235,6 @@ class DiskManagerProxy {
 
   auto WorkThread(page_id_t oldpgid, bool iswrite) -> void;
 
-  // 每个页面的写队列
-  std::unordered_map<page_id_t, std::queue<ProxyFrame>> page_write_request_que_;
-  // 每个页面的读队列
-  std::unordered_map<page_id_t, std::queue<ProxyFrame>> page_read_request_que_;
   // 每个页面的缓存
   std::unordered_map<page_id_t, std::vector<char>> page_cache_;
   // 每个页面的缓存标记
