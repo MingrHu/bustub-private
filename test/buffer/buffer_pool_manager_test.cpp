@@ -14,7 +14,9 @@
 #include <cstdio>
 #include <filesystem>
 #include <iostream>
+#include <optional>
 #include <string>
+#include <thread>
 
 #include "buffer/buffer_pool_manager.h"
 #include "common/config.h"
@@ -53,33 +55,45 @@ TEST(BufferPoolManagerTest, BPMTEST) {
 
   // 启动读者线程
   std::vector<std::thread> wrthread;
-  size_t thread_num = 8;
-  wrthread.reserve(3 *thread_num);
+  size_t thread_num = 16;
+  wrthread.reserve(3 * thread_num);
   auto pgvec_copy = pgvec;  // 复制到堆上
   for (size_t i = 0; i < thread_num; i++) {
-    wrthread.emplace_back([i, pgvec_copy, bpm]() {  // 按值捕获 i 和 pgvec_copy
-      for (size_t j = 800 * i; j < 6400 / (i + 1); j++) {
-        auto read = bpm->ReadPage(pgvec_copy[j]);
+    wrthread.emplace_back([pgvec_copy, bpm]() {  // 按值捕获 i 和 pgvec_copy
+      // for (size_t j = 800 * i; j < 6400 / (i + 1); j++) {
+      //   auto read = bpm->WritePage(pgvec_copy[j]);
+      //   std::string str = std::to_string(j);
+      //   EXPECT_STREQ(read.GetData(), str.c_str());
+      // }
+      for (size_t j = 0; j < 6400; j++) {
+        auto read = bpm->WritePage(pgvec_copy[j]);
         std::string str = std::to_string(j);
         EXPECT_STREQ(read.GetData(), str.c_str());
+        read.Drop();
       }
     });
+    // wrthread.emplace_back([i, pgvec_copy, bpm]() {  // 按值捕获 i 和 pgvec_copy
+    //   for (size_t j = 800 * i; j < 6400 / (i + 1); j++) {
+    //     auto write = bpm->WritePage(pgvec_copy[j]);
+    //     std::string str = std::to_string(j);
+    //     EXPECT_STREQ(write.GetData(), str.c_str());
+    //   }
+    // });
 
-    wrthread.emplace_back([i, pgvec_copy, bpm]() {  // 按值捕获 i 和 pgvec_copy
-      for (size_t j = 800 * i; j < 6400 / (i + 1); j++) {
-        auto write = bpm->WritePage(pgvec_copy[j]);
-        std::string str = std::to_string(j);
-        EXPECT_STREQ(write.GetData(), str.c_str());
-      }
-    });
-
-    wrthread.emplace_back([i, pgvec_copy, bpm]() {  // 按值捕获 i 和 pgvec_copy
-      for (size_t j = 800 * i; j < 6400 / (i + 1); j++) {
-        while(!bpm->DeletePage(j)){};
-      
-        }
-    });
+    // wrthread.emplace_back([i, pgvec_copy, bpm]() {  // 按值捕获 i 和 pgvec_copy
+    //   for (size_t j = 800 * i; j < 6400 / (i + 1); j++) {
+    //     while (!bpm->DeletePage(j)) {
+    //     };
+    //   }
+    // });
   }
+
+  wrthread.emplace_back([pgvec_copy, bpm]() {  // 按值捕获 i 和 pgvec_copy
+    for (size_t j = 0; j < 6400; j++) {
+      while (bpm->GetPinCount(j) != std::nullopt && bpm->GetPinCount(j) != 0) {
+      };
+    }
+  });
 
   // 等待所有线程完成
   for (auto &reader : wrthread) {

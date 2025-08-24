@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <condition_variable>
 #include <future>
 #include <iterator>
 #include <list>
@@ -107,9 +108,15 @@ class FrameHeader {
    */
   page_id_t pgid_{INVALID_PAGE_ID};
 
+  bool iswriting_{false};
+
   bool isloading_{false};
 
-  bool iswriting_{false};
+  // 控制iswrting 和 isloading的变量
+  std::condition_variable frame_cv_;
+
+  // 帧的互斥变量 用于控制条件变量
+  std::mutex io_latch_;
 };
 
 // 线程池实例化防止被多次调用
