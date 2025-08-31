@@ -127,7 +127,13 @@ class BPlusTree {
 
   // accroding key return the index
   // -1 means no key else means pos
-  auto KeyBinarySearch(const KeyType& key,const BPlusTreePage* page)->int;
+  // 在叶子节点上查询
+  auto LeafBinarySearch(const KeyType& key,const LeafPage* leaf_page)->int;
+
+  // 在非叶子节点上进行查询
+  auto InnerBinarySearch(const KeyType& key,const InternalPage* page)->int;
+
+  auto FindBPlusTreeLeafNode(const KeyType& key,Context& ctx)->int;
 
   // member variable
   std::string index_name_;

@@ -39,12 +39,14 @@ BPLUSTREE_TYPE::BPlusTree(std::string name, page_id_t header_page_id, BufferPool
  */
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::IsEmpty() const -> bool { 
-  // 获取B+树第根对应的页面
+  // 获取B+树根对应的页面
+  bool res = false;
   ReadPageGuard guard = bpm_->ReadPage(header_page_id_);
   auto root_page = guard.As<BPlusTreeHeaderPage>();
-  if(root_page->root_page_id_ == INVALID_PAGE_ID)
-    return true;
-  return false;
+  if(root_page->root_page_id_ == INVALID_PAGE_ID){
+    res = true;
+  }
+  return res;
 }
 
 
@@ -62,17 +64,14 @@ auto BPLUSTREE_TYPE::IsEmpty() const -> bool {
  */
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result) -> bool {
-  if(IsEmpty())
-    return false;
-  // Declaration of context instance. Using the Context is not necessary but advised.
+  // 保存目标节点的页面
   Context ctx;
   ReadPageGuard guard = bpm_->ReadPage(header_page_id_);
-  auto page = guard.As<BPlusTreePage>();
-  int index = KeyBinarySearch(key, page);
-  if(index == -1)
+  if(guard.GetPageId() == INVALID_PAGE_ID){
     return false;
+  }
+  ctx.read_set_.push_back(guard);
   
-  return true;
 }
 
 /*****************************************************************************
@@ -155,45 +154,89 @@ auto BPLUSTREE_TYPE::GetRootPageId() -> page_id_t {
   return header_page_id_;
 }
 
-
-// Other helper function!
+/**
+ * @brief Other helper function!
+ * @return Page id of the root of this tree
+ *
+ */
 INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::KeyBinarySearch(const KeyType& key,const BPlusTreePage* page)->int{
-  // 先判断是否为叶子节点
-  if(page->IsLeafPage()){
-    int l = 0,r = page->GetSize() - 1,mid = l + (r - l) / 2;
-    auto leaf_page = static_cast<const LeafPage*>(page);
-    // 闭区间二分
-    while(l <= r){
-      // mid < target
-      if(comparator_(leaf_page->KeyAt(mid),key) == - 1)
-        l = mid + 1;
-      // mid >= target
-      else r = mid - 1;
-      mid = l + (r - l) / 2;
+auto BPLUSTREE_TYPE::LeafBinarySearch(const KeyType& key,const LeafPage* leaf_page)->int{
+  
+  int l = 0;
+  int r = leaf_page->GetSize() - 1;
+  auto mid = l + (r - l) / 2;
+  // 闭区间二分
+  while(l <= r){
+    // mid < target
+    if(comparator_(leaf_page->KeyAt(mid),key) == - 1){
+      l = mid + 1;
     }
-    if(l == page->GetSize() || comparator_(key,leaf_page->KeyAt(l)) != 0)
-      return -1;
-    return l;
+    // mid >= target
+    else{
+        r = mid - 1;
+    }
+    mid = l + (r - l) / 2;
   }
+  // 寻找第一个大于等于key的节点 如果大于则没找到
+  if(l == leaf_page->GetSize() || comparator_(key,leaf_page->KeyAt(l)) != 0){
+    return -1;
+  }
+  return l;
+}
 
-  // 如果不是叶子节点 就去寻找叶子节点
-  auto inner_page = static_cast<const InternalPage*>(page);
+
+INDEX_TEMPLATE_ARGUMENTS
+auto BPLUSTREE_TYPE::InnerBinarySearch(const KeyType& key,const InternalPage* inner_page)->int{
+  
   int start = 1;
-  if(comparator_(inner_page->KeyAt(start),key) == 1)
+  if(comparator_(inner_page->KeyAt(start),key) == 1){
     return 0;
-  int end = inner_page->GetSize() - 1,mid = start + (end - start) / 2;
+  }
+  int end = inner_page->GetSize() - 1;
+  auto mid = start + (end - start) / 2;
   // 找到第一个大于等于key的节点
   while(start <= end){
-    if(comparator_(inner_page->KeyAt(mid),key) == -1)
+    if(comparator_(inner_page->KeyAt(mid),key) == -1){
       start = mid + 1;
-    else end = mid - 1;
+    } 
+    else {
+      end = mid - 1;
+    }
     mid = start + (end - start) / 2;
   }
-  if(comparator_(inner_page->KeyAt(start),key) == 0)
+  if(comparator_(inner_page->KeyAt(start),key) == 0){
     return start;
+  }
   return start - 1;
 }
+
+
+INDEX_TEMPLATE_ARGUMENTS
+auto BPLUSTREE_TYPE::FindBPlusTreeLeafNode(const KeyType& key,Context& ctx)->int{
+
+  int index = -1;
+  while(!ctx.read_set_.empty()){
+    // 获取页面 并转为B+树页面
+    auto guard = std::move(ctx.read_set_.front());
+    auto cur_page = guard.As<BPlusTreePage>();
+
+    if(cur_page->IsLeafPage()){
+      const auto leaf_page = static_cast<const LeafPage*>(cur_page);
+      index = LeafBinarySearch(key, leaf_page);
+      break;
+    }
+    
+    const auto inner_page = static_cast<const InternalPage*>(cur_page);
+    index = InnerBinarySearch(key, inner_page);
+    int pgid = inner_page->ValueIndex(index);
+    auto readguard = bpm_->ReadPage(pgid);
+    ctx.read_set_.push_back(readguard);
+    ctx.read_set_.pop_front();
+  }
+  return index;
+}
+
+
 template class BPlusTree<GenericKey<4>, RID, GenericComparator<4>>;
 
 template class BPlusTree<GenericKey<8>, RID, GenericComparator<8>>;

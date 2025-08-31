@@ -67,4 +67,16 @@ auto BPlusTreePage::GetMinSize() const -> int
  return (max_size_ - 1) / 2 + 1;
 }
 
+template<typename val,typename arry>
+auto BPlusTreePage::IndexSearch(const val& value,const arry& value_arry,const int size) const->int{
+    int index = 0;
+    for(int i = 0;i < size;i++){
+        if(value_arry[index] == value){
+            index = i;
+            break;
+        }
+    }
+    return index;
+}
+
 }  // namespace bustub
