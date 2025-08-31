@@ -38,6 +38,7 @@
 #include "storage/page/b_plus_tree_header_page.h"
 #include "storage/page/b_plus_tree_internal_page.h"
 #include "storage/page/b_plus_tree_leaf_page.h"
+#include "storage/page/b_plus_tree_page.h"
 #include "storage/page/page_guard.h"
 
 namespace bustub {
@@ -123,6 +124,10 @@ class BPlusTree {
   void PrintTree(page_id_t page_id, const BPlusTreePage *page);
 
   auto ToPrintableBPlusTree(page_id_t root_id) -> PrintableBPlusTree;
+
+  // accroding key return the index
+  // -1 means no key else means pos
+  auto KeyBinarySearch(const KeyType& key,const BPlusTreePage* page)->int;
 
   // member variable
   std::string index_name_;

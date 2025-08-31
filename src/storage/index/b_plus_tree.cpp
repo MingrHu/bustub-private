@@ -11,7 +11,11 @@
 //===----------------------------------------------------------------------===//
 
 #include "storage/index/b_plus_tree.h"
+#include "common/config.h"
 #include "storage/index/b_plus_tree_debug.h"
+#include "storage/page/b_plus_tree_header_page.h"
+#include "storage/page/b_plus_tree_page.h"
+#include "storage/page/page_guard.h"
 
 namespace bustub {
 
@@ -34,7 +38,15 @@ BPLUSTREE_TYPE::BPlusTree(std::string name, page_id_t header_page_id, BufferPool
  * @return Returns true if this B+ tree has no keys and values.
  */
 INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::IsEmpty() const -> bool { UNIMPLEMENTED("TODO(P2): Add implementation."); }
+auto BPLUSTREE_TYPE::IsEmpty() const -> bool { 
+  // 获取B+树第根对应的页面
+  ReadPageGuard guard = bpm_->ReadPage(header_page_id_);
+  auto root_page = guard.As<BPlusTreeHeaderPage>();
+  if(root_page->root_page_id_ == INVALID_PAGE_ID)
+    return true;
+  return false;
+}
+
 
 /*****************************************************************************
  * SEARCH
@@ -50,9 +62,17 @@ auto BPLUSTREE_TYPE::IsEmpty() const -> bool { UNIMPLEMENTED("TODO(P2): Add impl
  */
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result) -> bool {
-  UNIMPLEMENTED("TODO(P2): Add implementation.");
+  if(IsEmpty())
+    return false;
   // Declaration of context instance. Using the Context is not necessary but advised.
   Context ctx;
+  ReadPageGuard guard = bpm_->ReadPage(header_page_id_);
+  auto page = guard.As<BPlusTreePage>();
+  int index = KeyBinarySearch(key, page);
+  if(index == -1)
+    return false;
+  
+  return true;
 }
 
 /*****************************************************************************
@@ -131,8 +151,49 @@ auto BPLUSTREE_TYPE::End() -> INDEXITERATOR_TYPE { UNIMPLEMENTED("TODO(P2): Add 
  * You may want to implement this while implementing Task #3.
  */
 INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::GetRootPageId() -> page_id_t { UNIMPLEMENTED("TODO(P2): Add implementation."); }
+auto BPLUSTREE_TYPE::GetRootPageId() -> page_id_t { 
+  return header_page_id_;
+}
 
+
+// Other helper function!
+INDEX_TEMPLATE_ARGUMENTS
+auto BPLUSTREE_TYPE::KeyBinarySearch(const KeyType& key,const BPlusTreePage* page)->int{
+  // 先判断是否为叶子节点
+  if(page->IsLeafPage()){
+    int l = 0,r = page->GetSize() - 1,mid = l + (r - l) / 2;
+    auto leaf_page = static_cast<const LeafPage*>(page);
+    // 闭区间二分
+    while(l <= r){
+      // mid < target
+      if(comparator_(leaf_page->KeyAt(mid),key) == - 1)
+        l = mid + 1;
+      // mid >= target
+      else r = mid - 1;
+      mid = l + (r - l) / 2;
+    }
+    if(l == page->GetSize() || comparator_(key,leaf_page->KeyAt(l)) != 0)
+      return -1;
+    return l;
+  }
+
+  // 如果不是叶子节点 就去寻找叶子节点
+  auto inner_page = static_cast<const InternalPage*>(page);
+  int start = 1;
+  if(comparator_(inner_page->KeyAt(start),key) == 1)
+    return 0;
+  int end = inner_page->GetSize() - 1,mid = start + (end - start) / 2;
+  // 找到第一个大于等于key的节点
+  while(start <= end){
+    if(comparator_(inner_page->KeyAt(mid),key) == -1)
+      start = mid + 1;
+    else end = mid - 1;
+    mid = start + (end - start) / 2;
+  }
+  if(comparator_(inner_page->KeyAt(start),key) == 0)
+    return start;
+  return start - 1;
+}
 template class BPlusTree<GenericKey<4>, RID, GenericComparator<4>>;
 
 template class BPlusTree<GenericKey<8>, RID, GenericComparator<8>>;
