@@ -135,6 +135,8 @@ class BPlusTree {
 
   auto FindBPlusTreeLeafNode(const KeyType& key,Context& ctx)->int;
 
+  void InsertLeafPageNode(int insert_pos,const KeyType& key,const ValueType& val,LeafPage* leaf_page,bool init = false);
+
   // member variable
   std::string index_name_;
   BufferPoolManager *bpm_;

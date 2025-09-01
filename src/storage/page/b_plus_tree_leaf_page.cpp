@@ -12,6 +12,7 @@
 
 #include <sstream>
 
+#include "common/config.h"
 #include "common/exception.h"
 #include "common/rid.h"
 #include "storage/page/b_plus_tree_leaf_page.h"
@@ -37,6 +38,7 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::Init(int max_size)
   SetPageType(IndexPageType::LEAF_PAGE);
   SetMaxSize(max_size);
   SetSize(0);
+  SetNextPageId(INVALID_PAGE_ID);
 }
 
 /**
