@@ -11,6 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "storage/index/b_plus_tree.h"
+#include <utility>
 #include "common/config.h"
 #include "storage/index/b_plus_tree_debug.h"
 #include "storage/page/b_plus_tree_header_page.h"
@@ -70,8 +71,18 @@ auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
   if(guard.GetPageId() == INVALID_PAGE_ID){
     return false;
   }
+
   ctx.read_set_.push_back(guard);
-  
+
+  auto index = FindBPlusTreeLeafNode(key, ctx);
+  if(index == -1 || ctx.read_set_.empty()){
+    return false;
+  }
+
+  ReadPageGuard read_guard = std::move(ctx.read_set_.front());
+  auto target_val = read_guard.As<LeafPage>();
+  result->push_back(target_val->ValueAt(index));
+  return true;
 }
 
 /*****************************************************************************
@@ -90,9 +101,48 @@ auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
  */
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value) -> bool {
-  UNIMPLEMENTED("TODO(P2): Add implementation.");
+
+  // 判空
+  if(IsEmpty()){
+    // 先锁住根节点
+    auto guard = bpm_->WritePage(header_page_id_);
+    // 确保初始化树的时候只有一个线程 
+    if(guard.GetPageId() == INVALID_PAGE_ID){
+      // 获取新的页 并设置该页的叶子节点值
+      auto new_pgid = bpm_->NewPage();
+      auto write_guard = bpm_->WritePage(new_pgid);
+      auto leaf_page = write_guard.AsMut<LeafPage>();
+      leaf_page->Init();
+      leaf_page->SetKeyAt(0, key);
+      leaf_page->SetValueAt(0, value);
+      return true;
+    }
+  }
+
   // Declaration of context instance. Using the Context is not necessary but advised.
   Context ctx;
+  // 尝试定位目标节点
+  auto read_guard = bpm_->ReadPage(header_page_id_);
+  ctx.read_set_.push_back(read_guard);
+  auto cur_page = ctx.read_set_.front().As<BPlusTreePage>();
+
+  if(cur_page->IsLeafPage()){
+    // 先找叶子节点的合适下标
+    ctx.read_set_.pop_front();
+    // 寻找对应的页
+    auto write_guard = bpm_->WritePage(header_page_id_);
+    auto leaf_page = write_guard.AsMut<LeafPage>();
+    int index = LeafBinarySearch(key, leaf_page);
+    // 写入值
+    leaf_page->SetKeyAt(index, key);
+    leaf_page->SetValueAt(index, value);
+  }
+
+
+  ctx.read_set_.push_back(read_guard);
+  auto page = read_guard.As<BPlusTreePage>();
+
+  return true;
 }
 
 /*****************************************************************************
@@ -151,7 +201,10 @@ auto BPLUSTREE_TYPE::End() -> INDEXITERATOR_TYPE { UNIMPLEMENTED("TODO(P2): Add 
  */
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::GetRootPageId() -> page_id_t { 
-  return header_page_id_;
+
+  ReadPageGuard guard = bpm_->ReadPage(header_page_id_);
+  auto root_page = guard.As<BPlusTreeHeaderPage>();
+  return root_page->root_page_id_;
 }
 
 /**
@@ -218,17 +271,19 @@ auto BPLUSTREE_TYPE::FindBPlusTreeLeafNode(const KeyType& key,Context& ctx)->int
   while(!ctx.read_set_.empty()){
     // 获取页面 并转为B+树页面
     auto guard = std::move(ctx.read_set_.front());
-    auto cur_page = guard.As<BPlusTreePage>();
+    // 待操作页面
+    auto op_page = guard.As<BPlusTreePage>();
 
-    if(cur_page->IsLeafPage()){
-      const auto leaf_page = static_cast<const LeafPage*>(cur_page);
+    if(op_page->IsLeafPage()){
+      const auto leaf_page = static_cast<const LeafPage*>(op_page);
       index = LeafBinarySearch(key, leaf_page);
       break;
     }
     
-    const auto inner_page = static_cast<const InternalPage*>(cur_page);
+    const auto inner_page = static_cast<const InternalPage*>(op_page);
     index = InnerBinarySearch(key, inner_page);
     int pgid = inner_page->ValueIndex(index);
+    // 放入下一个值的页面
     auto readguard = bpm_->ReadPage(pgid);
     ctx.read_set_.push_back(readguard);
     ctx.read_set_.pop_front();
