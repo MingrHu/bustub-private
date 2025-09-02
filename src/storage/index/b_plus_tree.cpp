@@ -161,6 +161,7 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value) -> bool 
 
   auto leaf_pgid = ctx.read_set_.front().GetPageId();
   ctx.read_set_.pop_front();
+
   // 对待操作的叶子节点加锁
   ctx.write_set_.push_back(bpm_->WritePage(leaf_pgid));
   LeafPage* leaf_page = ctx.write_set_.front().AsMut<LeafPage>();
@@ -174,54 +175,44 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value) -> bool 
     }
     // 插入值
     InsertLeafPageNode(insert_index, key, value, leaf_page,false);
-  }
 
-  // 如果叶子节点需要分裂
-  if(leaf_page->GetSize() == leaf_max_size_){
-    // 分割点前是一部分 分割点及以后是另一部分
-    int split_pos = leaf_max_size_ >> 1;
-    int new_leaf_pgid = bpm_->NewPage();
-    auto new_leaf_guard = bpm_->WritePage(new_leaf_pgid);
-    LeafPage* new_leaf_page = new_leaf_guard.AsMut<LeafPage>();
-    new_leaf_page->Init(leaf_max_size_);
-    // 更新相关元信息
-    new_leaf_page->SetNextPageId(leaf_page->GetNextPageId());
-    leaf_page->SetNextPageId(new_leaf_pgid);
+    // 如果叶子节点需要分裂
+    if(leaf_page->GetSize() == leaf_max_size_){
+      int split_pos = leaf_max_size_ >> 1;
+      // 创建新页
+      auto new_pgid = bpm_->NewPage();
+      auto new_write_guard = bpm_->WritePage(new_pgid);
+      LeafPage* new_leaf_page = new_write_guard.AsMut<LeafPage>();
+      SplitPage(split_pos, new_pgid, leaf_page, new_leaf_page);
+      // 需要向上传递的键和值
+      KeyType split_key = leaf_page->KeyAt(split_pos);
+      page_id_t child_pgid = new_pgid;  
+      // 如果只有叶子节点
+      if(ctx.read_set_.empty()){
 
-    for(int i = split_pos;i <leaf_max_size_;i++){
-      InsertLeafPageNode(i - split_pos, leaf_page->KeyAt(i), 
-      leaf_page->ValueAt(i), new_leaf_page,false);
-    }
-    // 更新键值数目
-    leaf_page->SetSize(split_pos);
-    // 记录当前新页的关键信息
-    auto split_key = new_leaf_page->KeyAt(0);
-    auto child_pgid = new_leaf_pgid;
-    // 释放当前的叶子页锁
-    new_leaf_guard.Drop();
+      }
 
-    bool update_root_flag = true;
-    while(!ctx.path_.empty()){
-      auto parent_page_guard = bpm_->WritePage(ctx.path_.top().first);
-      auto pre_insert_pos = ctx.path_.top().second;
-      ctx.path_.pop();
-      InternalPage* parent_page = parent_page_guard.AsMut<InternalPage>();
-      InsertInnerPageNode(pre_insert_pos, split_key, child_pgid,parent_page,false);
-      
-      if(parent_page->GetSize() == internal_max_size_){
-        int new_pgid = bpm_->NewPage();
-        split_pos = (internal_max_size_ >> 1) + 1;
-        auto new_page_guard = bpm_->WritePage(new_pgid);
-        InternalPage* new_page = new_page_guard.AsMut<InternalPage>();
-        new_page->Init(internal_max_size_);
-        child_pgid = new_pgid;
-
-
-        for(int i = split_pos;i < internal_max_size_;i++){
-          InsertInnerPageNode(i - split_pos, parent_page->KeyAt(i), child_pgid,parent_page,false);
+      // 往上递推节点有两种情况
+      // 如果树有内部节点
+      while(!ctx.path_.empty()){
+        auto parent_page_guard = bpm_->WritePage(ctx.path_.top().first);
+        auto pre_insert_pos = ctx.path_.top().second;
+        ctx.path_.pop();
+        InternalPage* parent_page = parent_page_guard.AsMut<InternalPage>();
+        // 这里子节点的split_key可以直接插入父节点对应的位置
+        InsertInnerPageNode(pre_insert_pos, split_key, child_pgid,parent_page,false);
+        
+        if(parent_page->GetSize() == internal_max_size_){
+          split_pos = (internal_max_size_ >> 1) + 1;
+          SplitPage(split_pos, child_pgid, parent_page,false);
         }
 
       }
+
+    }
+    else{
+      // 释放叶子页面
+      ctx.write_set_.pop_front();
     }
   }
 
@@ -391,12 +382,16 @@ auto BPLUSTREE_TYPE::FindBPlusTreeLeafNode(const KeyType& key,Context& ctx)->int
     }
     
     const auto inner_page = static_cast<const InternalPage*>(op_page);
+    // inner_page 查找的要特殊一些 如果超出最大值 按最大值找
     index = InnerBinarySearch(key, inner_page);
+    if(index == inner_page->GetSize()){
+      index -= 1;
+    }
+    ctx.read_set_.pop_front();
     int pgid = inner_page->ValueIndex(index);
     // 放入下一个值的页面
     auto readguard = bpm_->ReadPage(pgid);
     ctx.read_set_.push_back(readguard);
-    ctx.read_set_.pop_front();
   }
   return index;
 }
@@ -432,6 +427,40 @@ void BPLUSTREE_TYPE::InsertInnerPageNode(int insert_pos,const KeyType& key,const
   inner_page->SetKeyAt(insert_pos, key);
   inner_page->SetValueAt(insert_pos, val);
   inner_page->ChangeSizeBy(1);
+}
+
+
+INDEX_TEMPLATE_ARGUMENTS
+void BPLUSTREE_TYPE::SplitPage(int split_pos,int new_pgid,BPlusTreePage* origional_page,BPlusTreePage* new_page,bool is_leaf){
+  // 针对叶子节点
+  if(is_leaf){
+    auto org_leaf_page = static_cast<LeafPage*>(origional_page);
+    auto new_leaf_page = static_cast<LeafPage*>(new_page);
+    // 初始化新页面
+    new_leaf_page->Init(leaf_max_size_);
+    // 更新相关元信息
+    new_leaf_page->SetNextPageId(org_leaf_page->GetNextPageId());
+    org_leaf_page->SetNextPageId(new_pgid);
+    // 将当前节点的分割点及以后键值复制到新的节点里面
+    for(int i = split_pos;i <leaf_max_size_;i++){
+      InsertLeafPageNode(i - split_pos, org_leaf_page->KeyAt(i), 
+      new_leaf_page->ValueAt(i), new_leaf_page,false);
+    }
+    org_leaf_page->SetSize(split_pos);
+  }
+  else{
+    auto org_inner_page = static_cast<InternalPage*>(origional_page);
+    auto new_inner_page = static_cast<InternalPage*>(new_page);
+    // 初始化新页面
+    new_inner_page->Init(internal_max_size_);
+    // 将当前节点的分割点及以后键值复制到新的节点里面
+    // inner比较特殊 必须从1开始 0是哨兵节点
+    for(int i = split_pos + 1;i <internal_max_size_;i++){
+      InsertInnerPageNode(i - split_pos, org_inner_page->KeyAt(i), 
+      new_inner_page->ValueAt(i), new_inner_page,false);
+    }
+    org_inner_page->SetSize(split_pos + 1);
+  }
 }
 
 

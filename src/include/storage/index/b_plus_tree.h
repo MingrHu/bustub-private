@@ -141,6 +141,8 @@ class BPlusTree {
 
   void InsertInnerPageNode(int insert_pos,const KeyType& key,const page_id_t& val,InternalPage* inner_page,bool init = false);
 
+  void SplitPage(int split_pos,int new_pgid,BPlusTreePage* origional_page,BPlusTreePage* new_page,bool is_leaf = true);
+
   // member variable
   std::string index_name_;
   BufferPoolManager *bpm_;

@@ -14,6 +14,7 @@
 #include <iostream>
 #include <sstream>
 
+#include "common/config.h"
 #include "common/exception.h"
 #include "common/macros.h"
 #include "storage/index/generic_key.h"
@@ -39,6 +40,7 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::Init(int max_size)
 { 
   SetMaxSize(max_size);
   SetPageType(IndexPageType::INTERNAL_PAGE);
+  SetValueAt(0, INVALID_PAGE_ID);
   SetSize(1);
 }
 
