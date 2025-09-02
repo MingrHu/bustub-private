@@ -105,14 +105,15 @@ INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value) -> bool {
 
   // 获取节点位置顺序：头页面--根节点页面/内部节点页面--叶子节点页面
+  // 锁原则：获取当前节点读锁 读取保存键值内容 释放锁 使用键值内容（读锁或写锁）
   // Declaration of context instance. Using the Context is not necessary but advised.
   Context ctx;
-  auto header_page = bpm_->ReadPage(header_page_id_);
-  // 只是为了获取头页面存储的根节点页面ID
-  ctx.root_page_id_ = header_page.As<BPlusTreeHeaderPage>()->root_page_id_;
+  ctx.read_set_.push_back(bpm_->ReadPage(header_page_id_));
+  ctx.root_page_id_ = ctx.read_set_.front().As<BPlusTreeHeaderPage>()->root_page_id_;
   // 判空
   if(ctx.root_page_id_ == INVALID_PAGE_ID){
-    // 考虑到要更新头页面的内容先锁住入口节点
+    ctx.read_set_.pop_front();
+    // 升级写锁
     ctx.header_page_ = bpm_->WritePage(header_page_id_);
     auto root_page = ctx.header_page_->AsMut<BPlusTreeHeaderPage>();
     // 防止多次重写
@@ -122,7 +123,7 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value) -> bool 
       // 初始化根节点
       auto write_guard = bpm_->WritePage(new_pgid);
       LeafPage* leaf_page = write_guard.AsMut<LeafPage>();
-      // 插入值
+      // 更新根节点
       InsertLeafPageNode(0, key, value, leaf_page,true);
       // 更新根节点的页ID值
       ctx.root_page_id_ = new_pgid; 
@@ -133,24 +134,106 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value) -> bool 
     ctx.header_page_ = std::nullopt;
   }
 
-  // 否则尝试定位目标节点
-  ctx.read_set_.push_back(bpm_->ReadPage(ctx.root_page_id_));
-  auto cur_page = ctx.read_set_.front().As<BPlusTreePage>();
+  if(ctx.read_set_.empty()){
+    ctx.read_set_.push_back(bpm_->ReadPage(header_page_id_));
+  }
+  auto root_pgid = ctx.root_page_id_;
+  // 释放header避免死锁
+  ctx.read_set_.pop_front();
 
-  // 根节点就是叶子节点
-  if(cur_page->IsLeafPage()){
-    // 退出读页面 开始加独占锁
+  // 加入根页面 现在只有root页面  
+  ctx.read_set_.push_back(bpm_->ReadPage(root_pgid));
+  auto cur_page = ctx.read_set_.back().As<BPlusTreePage>();
+  auto next_pgid = root_pgid;
+  
+  // 尝试读锁去寻找叶子节点
+  while(!cur_page->IsLeafPage()){
+    auto inner_page = static_cast<const InternalPage*>(cur_page);
+    int index = InnerBinarySearch(key, inner_page);
+    // 收集内部节点的路径信息
+    ctx.path_.push({next_pgid,index});
+    // 更新值
+    next_pgid = inner_page->ValueAt(index);
     ctx.read_set_.pop_front();
-    ctx.write_set_.push_back(bpm_->WritePage(ctx.root_page_id_));
-    // 获取B+树的入口指向的页面 既是根又是叶子页面
-    LeafPage* leaf_page = bpm_->WritePage(ctx.root_page_id_).AsMut<LeafPage>();
-    int index = LeafBinarySearch(key, leaf_page);
+    ctx.read_set_.push_back(bpm_->ReadPage(next_pgid));
+    cur_page = ctx.read_set_.front().As<BPlusTreePage>();
+  }
+
+  auto leaf_pgid = ctx.read_set_.front().GetPageId();
+  ctx.read_set_.pop_front();
+  // 对待操作的叶子节点加锁
+  ctx.write_set_.push_back(bpm_->WritePage(leaf_pgid));
+  LeafPage* leaf_page = ctx.write_set_.front().AsMut<LeafPage>();
+
+  if(leaf_page->GetSize() < leaf_max_size_){
+    int insert_index = LeafBinarySearch(key, leaf_page);
+    // 重复键
+    if(insert_index != leaf_page->GetSize() && comparator_(key,leaf_page->KeyAt(insert_index))){
+      ctx.write_set_.pop_back();
+      return false;
+    }
     // 插入值
-    InsertLeafPageNode(index, key, value, leaf_page,false);
+    InsertLeafPageNode(insert_index, key, value, leaf_page,false);
+  }
+
+  // 如果叶子节点需要分裂
+  if(leaf_page->GetSize() == leaf_max_size_){
+    // 分割点前是一部分 分割点及以后是另一部分
+    int split_pos = leaf_max_size_ >> 1;
+    int new_leaf_pgid = bpm_->NewPage();
+    auto new_leaf_guard = bpm_->WritePage(new_leaf_pgid);
+    LeafPage* new_leaf_page = new_leaf_guard.AsMut<LeafPage>();
+    new_leaf_page->Init(leaf_max_size_);
+    // 更新相关元信息
+    new_leaf_page->SetNextPageId(leaf_page->GetNextPageId());
+    leaf_page->SetNextPageId(new_leaf_pgid);
+
+    for(int i = split_pos;i <leaf_max_size_;i++){
+      InsertLeafPageNode(i - split_pos, leaf_page->KeyAt(i), 
+      leaf_page->ValueAt(i), new_leaf_page,false);
+    }
+    // 更新键值数目
+    leaf_page->SetSize(split_pos);
+    // 记录当前新页的关键信息
+    auto split_key = new_leaf_page->KeyAt(0);
+    auto child_pgid = new_leaf_pgid;
+    // 释放当前的叶子页锁
+    new_leaf_guard.Drop();
+
+    bool update_root_flag = true;
+    while(!ctx.path_.empty()){
+      auto parent_page_guard = bpm_->WritePage(ctx.path_.top().first);
+      auto pre_insert_pos = ctx.path_.top().second;
+      ctx.path_.pop();
+      InternalPage* parent_page = parent_page_guard.AsMut<InternalPage>();
+      InsertInnerPageNode(pre_insert_pos, split_key, child_pgid,parent_page,false);
+      
+      if(parent_page->GetSize() == internal_max_size_){
+        int new_pgid = bpm_->NewPage();
+        split_pos = (internal_max_size_ >> 1) + 1;
+        auto new_page_guard = bpm_->WritePage(new_pgid);
+        InternalPage* new_page = new_page_guard.AsMut<InternalPage>();
+        new_page->Init(internal_max_size_);
+        child_pgid = new_pgid;
+
+
+        for(int i = split_pos;i < internal_max_size_;i++){
+          InsertInnerPageNode(i - split_pos, parent_page->KeyAt(i), child_pgid,parent_page,false);
+        }
+
+      }
+    }
+  }
+
+  
+
+  {
+    
+
     // 判断是否需要分裂
     if(leaf_page->GetSize() == leaf_page->GetMaxSize()){
-      // 分割点前是一部分 分割点及以后是另一部分
-      int split_pos = (leaf_page->GetMaxSize() - 1) / 2;
+      
+      
       int new_root_page_id = bpm_->NewPage();
       // 产生新的根节点
       auto root_guard=bpm_->WritePage(new_root_page_id);
@@ -254,8 +337,11 @@ auto BPLUSTREE_TYPE::LeafBinarySearch(const KeyType& key,const LeafPage* leaf_pa
     }
     mid = l + (r - l) / 2;
   }
+  if(l == leaf_max_size_ || comparator_(key,leaf_page->KeyAt(l)) == 0){
+    return l;
+  }
 
-  return l;
+  return l - 1;
 }
 
 
@@ -278,8 +364,10 @@ auto BPLUSTREE_TYPE::InnerBinarySearch(const KeyType& key,const InternalPage* in
     }
     mid = start + (end - start) / 2;
   }
-
-  return start;
+  if(start == internal_max_size_ || comparator_(key,inner_page->KeyAt(start)) == 0){
+    return start;
+  }
+  return start - 1;
 }
 
 
@@ -328,6 +416,22 @@ void BPLUSTREE_TYPE::InsertLeafPageNode(int insert_pos,const KeyType& key,const 
   leaf_page->SetKeyAt(insert_pos, key);
   leaf_page->SetValueAt(insert_pos, val);
   leaf_page->ChangeSizeBy(1);
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+void BPLUSTREE_TYPE::InsertInnerPageNode(int insert_pos,const KeyType& key,const page_id_t& val,InternalPage* inner_page,bool init){
+  if(init){
+    inner_page->Init(internal_max_size_);
+  }
+  else{
+    for(int i = insert_pos;i < inner_page->GetSize();i++){
+      inner_page->SetKeyAt(i+1, inner_page->KeyAt(i));
+      inner_page->SetValueAt(i+1, inner_page->ValueAt(i));
+    }
+  }
+  inner_page->SetKeyAt(insert_pos, key);
+  inner_page->SetValueAt(insert_pos, val);
+  inner_page->ChangeSizeBy(1);
 }
 
 

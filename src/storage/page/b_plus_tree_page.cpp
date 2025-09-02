@@ -65,7 +65,7 @@ auto BPlusTreePage::GetMinSize() const -> int
 { 
  if(page_type_ == IndexPageType::INTERNAL_PAGE){
     // 向上取整
-  return (max_size_ - 1) / 2 + 1;
+  return ((max_size_ - 1) >> 1) + 1;
  }
  return 1;
 }

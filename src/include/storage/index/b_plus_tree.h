@@ -24,6 +24,7 @@
 
 #include <algorithm>
 #include <deque>
+#include <stack>
 #include <filesystem>
 #include <iostream>
 #include <optional>
@@ -65,6 +66,8 @@ class Context {
 
   // You may want to use this when getting value, but not necessary.
   std::deque<ReadPageGuard> read_set_;
+
+  std::stack<std::pair<page_id_t,int>> path_; 
 
   auto IsRootPage(page_id_t page_id) -> bool { return page_id == root_page_id_; }
 };
@@ -126,16 +129,17 @@ class BPlusTree {
   auto ToPrintableBPlusTree(page_id_t root_id) -> PrintableBPlusTree;
 
   // accroding key return the index
-  // -1 means no key else means pos
-  // 在叶子节点上查询
+  // 在叶子节点上查询 返回可插入的位置
   auto LeafBinarySearch(const KeyType& key,const LeafPage* leaf_page)->int;
 
-  // 在非叶子节点上进行查询
+  // 在非叶子节点上进行查询 返回可插入的位置
   auto InnerBinarySearch(const KeyType& key,const InternalPage* page)->int;
 
   auto FindBPlusTreeLeafNode(const KeyType& key,Context& ctx)->int;
 
   void InsertLeafPageNode(int insert_pos,const KeyType& key,const ValueType& val,LeafPage* leaf_page,bool init = false);
+
+  void InsertInnerPageNode(int insert_pos,const KeyType& key,const page_id_t& val,InternalPage* inner_page,bool init = false);
 
   // member variable
   std::string index_name_;

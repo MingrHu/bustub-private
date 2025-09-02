@@ -60,6 +60,7 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::SetNextPageId(page_id_t next_page_id) {
  */
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::KeyAt(int index) const -> KeyType { 
+  BUSTUB_ENSURE(index < GetMaxSize(),"Leaf_page_index range out of max_size!\n");
   return key_array_[index];
 }
 
@@ -70,16 +71,19 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::ValueIndex(const ValueType &value) const -> int
 
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_LEAF_PAGE_TYPE::SetKeyAt(int index, const KeyType &key){
+  BUSTUB_ENSURE(index < GetMaxSize(),"Leaf_page_index range out of max_size!\n");
   key_array_[index] = key;
 }
 
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_LEAF_PAGE_TYPE::SetValueAt(int index,const ValueType &val){
+  BUSTUB_ENSURE(index < GetMaxSize(),"Leaf_page_index range out of max_size!\n");
   rid_array_[index] = val;
 }
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::ValueAt(int index) const -> ValueType{
+  BUSTUB_ENSURE(index < GetMaxSize(),"Leaf_page_index range out of max_size!\n");
   return rid_array_[index];
 }
 
