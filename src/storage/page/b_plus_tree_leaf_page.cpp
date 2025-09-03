@@ -66,7 +66,13 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::KeyAt(int index) const -> KeyType {
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::ValueIndex(const ValueType &value) const -> int{
-  return this->IndexSearch(value, this->rid_array_, LEAF_PAGE_SLOT_CNT);
+  int res = 0;
+  for(int i = 0;i< GetSize();i++){
+    if(rid_array_[i] == value){
+      res = i;
+    }
+  }
+  return res;
 }
 
 INDEX_TEMPLATE_ARGUMENTS

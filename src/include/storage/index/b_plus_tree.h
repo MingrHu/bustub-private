@@ -129,11 +129,8 @@ class BPlusTree {
   auto ToPrintableBPlusTree(page_id_t root_id) -> PrintableBPlusTree;
 
   // accroding key return the index
-  // 在叶子节点上查询 
-  auto LeafBinarySearch(const KeyType& key,const LeafPage* leaf_page)->int;
-
-  // 在非叶子节点上进行查询 
-  auto InnerBinarySearch(const KeyType& key,const InternalPage* page)->int;
+  // 精确查询 内部节点返回最大小于等于 叶子节点返回找到或没找到
+  auto KeyBinarySearch(const KeyType& key,const BPlusTreePage* page,bool is_leaf = true)->int;
 
   // 返回第一个大于等于目标键的位置
   auto LowerBound(const KeyType& key,const BPlusTreePage* target_page,bool is_leaf = true)->int;

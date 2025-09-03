@@ -57,10 +57,6 @@ class BPlusTreePage {
   void SetMaxSize(int max_size);
   auto GetMinSize() const -> int;
 
-  // 保证值存在
-  template<typename val,typename arry>
-  auto IndexSearch(const val& value,const arry& value_arry,int size)  const->int;
-
   /*
    * TODO(P2): Remove __attribute__((__unused__)) if you intend to use the fields.
    */

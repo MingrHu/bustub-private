@@ -65,21 +65,10 @@ auto BPlusTreePage::GetMinSize() const -> int
 { 
  if(page_type_ == IndexPageType::INTERNAL_PAGE){
     // 向上取整
-  return ((max_size_ - 1) >> 1) + 1;
+  auto res = ((max_size_ - 1) >> 1) + 1;
+  return  res >= 2 ? res : 2 ;
  }
  return 1;
-}
-
-template<typename val,typename arry>
-auto BPlusTreePage::IndexSearch(const val& value,const arry& value_arry,const int size) const->int{
- int index = 0;
- for(int i = 0;i < size;i++){
-  if(value_arry[index] == value){
-    index = i;
-    break;
-   }
- }
- return index;
 }
 
 }  // namespace bustub

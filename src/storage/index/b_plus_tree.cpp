@@ -69,11 +69,12 @@ auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
   // 保存目标节点的页面
   Context ctx;
   ReadPageGuard guard = bpm_->ReadPage(header_page_id_);
-  if(guard.GetPageId() == INVALID_PAGE_ID){
+  auto root_pgid = guard.As<BPlusTreeHeaderPage>()->root_page_id_;
+  if(root_pgid == INVALID_PAGE_ID){
     return false;
   }
-
-  ctx.read_set_.push_back(guard);
+  ctx.root_page_id_ = root_pgid;
+  guard.Drop();
 
   auto index = FindBPlusTreeLeafNode(key, ctx);
   // 没找到
@@ -81,9 +82,9 @@ auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
     return false;
   }
 
-  ReadPageGuard read_guard = std::move(ctx.read_set_.front());
-  auto target_val = read_guard.As<LeafPage>();
-  result->push_back(target_val->ValueAt(index));
+  ReadPageGuard res_guard = std::move(ctx.read_set_.front());
+  auto target_page = res_guard.As<LeafPage>();
+  result->push_back(target_page->ValueAt(index));
   return true;
 }
 
@@ -145,12 +146,12 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value) -> bool 
   // 加入根页面 现在只有root页面  
   ctx.read_set_.push_back(bpm_->ReadPage(root_pgid));
   auto cur_page = ctx.read_set_.back().As<BPlusTreePage>();
-  auto next_pgid = ctx.root_page_id_;
+  auto next_pgid = root_pgid;
 
   // 尝试读锁去寻找叶子节点
   while(!cur_page->IsLeafPage()){
     auto inner_page = static_cast<const InternalPage*>(cur_page);
-    int index = LowerBound(key, inner_page);
+    int index = InnerBinarySearch(key, inner_page);
     // 收集内部节点的路径信息
     ctx.path_.push({next_pgid,index});
     // 更新值
@@ -260,15 +261,65 @@ INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::Remove(const KeyType &key) {
   // Declaration of context instance.
   Context ctx;
-  auto header_page = bpm_->ReadPage(header_page_id_);
-  if(header_page.As<BPlusTreeHeaderPage>()->root_page_id_ == INVALID_PAGE_ID){
+  auto header_page_guard = bpm_->ReadPage(header_page_id_);
+  ctx.read_set_.emplace_back(std::move(header_page_guard));
+  auto op_page = header_page_guard.As<BPlusTreeHeaderPage>();
+  // 判空
+  if(op_page->root_page_id_ == INVALID_PAGE_ID){
     return;
   }
-  ctx.read_set_.emplace_back(std::move(header_page));
+  auto root_pgid = op_page->root_page_id_;
+  ctx.read_set_.pop_front();
+  ctx.read_set_.push_back(bpm_->ReadPage(root_pgid));
+
+  auto cur_page = ctx.read_set_.back().As<BPlusTreePage>();
+  auto next_pgid = root_pgid;
+
+  // 尝试读锁去寻找叶子节点
+  while(!cur_page->IsLeafPage()){
+    auto inner_page = static_cast<const InternalPage*>(cur_page);
+    int index = InnerBinarySearch(key, inner_page);
+    // 收集内部节点的路径信息
+    ctx.path_.push({next_pgid,index});
+    // 更新值
+    next_pgid = inner_page->ValueAt(index);
+    ctx.read_set_.pop_front();
+    ctx.read_set_.push_back(bpm_->ReadPage(next_pgid));
+    cur_page = ctx.read_set_.front().As<BPlusTreePage>();
+  }
+
+  auto leaf_pgid = ctx.read_set_.front().GetPageId();
+  ctx.read_set_.pop_front();
+  // 叶子节点页面加锁
+  auto leaf_page_guard = bpm_->WritePage(leaf_pgid);
+  LeafPage* leaf_page = leaf_page_guard.AsMut<LeafPage>();
+  int index = LeafBinarySearch(key, leaf_page);
+  if(index == -1){
+    return;
+  }
+  // 删除这个键值
+  DeleteSpeciKeyVal(index, leaf_page);
+  // 判断这个节点是否为根节点
+  if(ctx.path_.empty()){
+    // 标记树为空
+    if(leaf_page->GetSize() == 0){
+      auto head_guard = bpm_->WritePage(header_page_id_);
+      auto head_page = head_guard.AsMut<BPlusTreeHeaderPage>();
+      head_page->root_page_id_ = INVALID_PAGE_ID;
+    }
+    return;
+  }
+
+  // 查看这个节点键值数量是否大于等于最小阈值
+  if(leaf_page->GetSize() >= leaf_page->GetMinSize()){
+    return;
+  }
+  // 需要去左边和右边尝试借节点
+
 
   
 
-  auto pgid = ctx.read_set_.front().GetPageId();
+  //auto pgid = ctx.read_set_.front().GetPageId();
   ctx.read_set_.pop_front();
 
   while(!ctx.path_.empty()){
@@ -326,55 +377,51 @@ auto BPLUSTREE_TYPE::GetRootPageId() -> page_id_t {
  *
  */
 INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::LeafBinarySearch(const KeyType& key,const LeafPage* leaf_page)->int{
+auto BPLUSTREE_TYPE::KeyBinarySearch(const KeyType& key,const BPlusTreePage* page,bool is_leaf)->int{
   
   int l = 0;
-  int r = leaf_page->GetSize() - 1;
+  int r = page->GetSize() - 1;
   auto mid = l + (r - l) / 2;
-  // 寻找第一个大于等于key的节点
-  while(l <= r){
-    // mid < target
-    if(comparator_(leaf_page->KeyAt(mid),key) == - 1){
-      l = mid + 1;
+
+  if(is_leaf){
+    auto leaf_page = static_cast<const LeafPage*>(page);
+    while(l <= r){
+      // mid < target
+      if(comparator_(leaf_page->KeyAt(mid),key) == - 1){
+        l = mid + 1;
+      }
+      // mid > target
+      else if(comparator_(leaf_page->KeyAt(mid),key) == 1){
+          r = mid - 1;
+      }
+      else return mid;
+      mid = l + (r - l) / 2;
     }
-    // mid >= target
-    else{
-        r = mid - 1;
+    return - 1;    
+  }
+
+  // 查找内部节点
+  l = 1,r = page->GetSize() - 1,mid = l + (r - l) / 2;
+  auto inner_page = static_cast<const InternalPage*>(page);
+
+  // 比第一个有效键值小
+  if(comparator_(inner_page->KeyAt(l),key) == 1){
+    return 0;
+  }
+  // 找到第一个大于等于key的节点
+  while(l <= r){
+    if(comparator_(inner_page->KeyAt(mid),key) == -1){
+      l = mid + 1;
+    } 
+    else {
+      r = mid - 1;
     }
     mid = l + (r - l) / 2;
   }
-  
-  if(l != leaf_page->GetSize() && comparator_(key,leaf_page->KeyAt(l)) == 0){
+  if(l != inner_page->GetSize()  && comparator_(key,inner_page->KeyAt(l)) == 0){
     return l;
   }
-
-  return - 1;
-}
-
-
-INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::InnerBinarySearch(const KeyType& key,const InternalPage* inner_page)->int{
-  
-  int start = 1;
-  if(comparator_(inner_page->KeyAt(start),key) == 1){
-    return 0;
-  }
-  int end = inner_page->GetSize() - 1;
-  auto mid = start + (end - start) / 2;
-  // 找到第一个大于等于key的节点
-  while(start <= end){
-    if(comparator_(inner_page->KeyAt(mid),key) == -1){
-      start = mid + 1;
-    } 
-    else {
-      end = mid - 1;
-    }
-    mid = start + (end - start) / 2;
-  }
-  if(start != inner_page->GetSize()  && comparator_(key,inner_page->KeyAt(start)) == 0){
-    return start;
-  }
-  return start - 1;
+  return l - 1;
 }
 
 INDEX_TEMPLATE_ARGUMENTS
@@ -424,7 +471,7 @@ INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::FindBPlusTreeLeafNode(const KeyType& key,Context& ctx)->int{
 
   int index = -1;
-  auto pgid = ctx.read_set_.front().GetPageId();
+  ctx.read_set_.push_back(bpm_->ReadPage(ctx.root_page_id_));
   while(!ctx.read_set_.empty()){
     // 获取页面 并转为B+树页面
     auto guard = std::move(ctx.read_set_.front());
@@ -433,7 +480,7 @@ auto BPLUSTREE_TYPE::FindBPlusTreeLeafNode(const KeyType& key,Context& ctx)->int
 
     if(op_page->IsLeafPage()){
       const auto leaf_page = static_cast<const LeafPage*>(op_page);
-      index = LeafBinarySearch(key, leaf_page);
+      index = KeyBinarySearch(key, leaf_page,true);
       // 没找到
       if(index == -1){
         ctx.read_set_.pop_front();
@@ -442,14 +489,13 @@ auto BPLUSTREE_TYPE::FindBPlusTreeLeafNode(const KeyType& key,Context& ctx)->int
     }
     
     const auto inner_page = static_cast<const InternalPage*>(op_page);
-    // inner_page 查找的要特殊一些 如果超出最大值 按最大值找
-    index = InnerBinarySearch(key, inner_page);
+    // inner_page 查找的要特殊一些 
+    index = KeyBinarySearch(key, inner_page,false);
     ctx.read_set_.pop_front();
 
-    pgid = inner_page->ValueIndex(index);
+    auto pgid = inner_page->ValueIndex(index);
     // 放入下一个值的页面
-    auto readguard = bpm_->ReadPage(pgid);
-    ctx.read_set_.push_back(readguard);
+    ctx.read_set_.emplace_back(bpm_->ReadPage(pgid));
   }
   return index;
 }
