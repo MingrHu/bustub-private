@@ -129,11 +129,14 @@ class BPlusTree {
   auto ToPrintableBPlusTree(page_id_t root_id) -> PrintableBPlusTree;
 
   // accroding key return the index
-  // 在叶子节点上查询 返回可插入的位置
+  // 在叶子节点上查询 
   auto LeafBinarySearch(const KeyType& key,const LeafPage* leaf_page)->int;
 
-  // 在非叶子节点上进行查询 返回可插入的位置
+  // 在非叶子节点上进行查询 
   auto InnerBinarySearch(const KeyType& key,const InternalPage* page)->int;
+
+  // 返回第一个大于等于目标键的位置
+  auto LowerBound(const KeyType& key,const BPlusTreePage* target_page,bool is_leaf = true)->int;
 
   auto FindBPlusTreeLeafNode(const KeyType& key,Context& ctx)->int;
 
@@ -142,6 +145,14 @@ class BPlusTree {
   void InsertInnerPageNode(int insert_pos,const KeyType& key,const page_id_t& val,InternalPage* inner_page,bool init = false);
 
   void SplitPage(int split_pos,int new_pgid,BPlusTreePage* origional_page,BPlusTreePage* new_page,bool is_leaf = true);
+
+  auto CheckParentPage(page_id_t parent_id)->bool;
+
+  void DeliverToHead(page_id_t parent_id,Context& ctx,page_id_t left_pgid,page_id_t right_pgid,const KeyType& split_key);
+
+  auto DeliverToInnerPage(Context& ctx,page_id_t right_pgid,const KeyType& split_key)->page_id_t;
+
+  void DeleteSpeciKeyVal(int delete_pos,LeafPage* leaf_page);
 
   // member variable
   std::string index_name_;
