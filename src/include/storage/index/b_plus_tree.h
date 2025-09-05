@@ -139,15 +139,9 @@ class BPlusTree {
 
   void InsertLeafPageNode(int insert_pos,const KeyType& key,const ValueType& val,LeafPage* leaf_page,bool init);
 
-  void InsertInnerPageNode(int insert_pos,const KeyType& key,const page_id_t& val,InternalPage* inner_page,bool init);
+  void InsertInnerPageNode(int insert_pos,const KeyType& key,const page_id_t& val,InternalPage* inner_page);
 
   void SplitPage(int split_pos,int new_pgid,BPlusTreePage* origional_page,BPlusTreePage* new_page,bool is_leaf);
-
-  auto CheckParentPage(page_id_t parent_id)->bool;
-
-  void DeliverToHead(page_id_t parent_id,Context& ctx,page_id_t left_pgid,page_id_t right_pgid,const KeyType& split_key);
-
-  auto DeliverToInnerPage(Context& ctx,page_id_t right_pgid,const KeyType& split_key)->page_id_t;
 
   void DeleteSpeciKeyVal(int delete_pos,LeafPage* leaf_page);
 
