@@ -24,6 +24,7 @@
 
 #include <algorithm>
 #include <deque>
+#include <mutex>
 #include <stack>
 #include <filesystem>
 #include <iostream>
@@ -67,9 +68,10 @@ class Context {
   // You may want to use this when getting value, but not necessary.
   std::deque<ReadPageGuard> read_set_;
 
-  std::stack<std::pair<page_id_t,int>> path_; 
+  std::stack<page_id_t> indexs_store_; 
 
   auto IsRootPage(page_id_t page_id) -> bool { return page_id == root_page_id_; }
+
 };
 
 #define BPLUSTREE_TYPE BPlusTree<KeyType, ValueType, KeyComparator>
@@ -130,18 +132,16 @@ class BPlusTree {
 
   // accroding key return the index
   // 精确查询 内部节点返回最大小于等于 叶子节点返回找到或没找到
-  auto KeyBinarySearch(const KeyType& key,const BPlusTreePage* page,bool is_leaf = true)->int;
+  auto KeyBinarySearch(const KeyType& key,const BPlusTreePage* page,bool is_leaf)->int;
 
   // 返回第一个大于等于目标键的位置
-  auto LowerBound(const KeyType& key,const BPlusTreePage* target_page,bool is_leaf = true)->int;
+  auto LowerBound(const KeyType& key,const BPlusTreePage* target_page,bool is_leaf)->int;
 
-  auto FindBPlusTreeLeafNode(const KeyType& key,Context& ctx)->int;
+  void InsertLeafPageNode(int insert_pos,const KeyType& key,const ValueType& val,LeafPage* leaf_page,bool init);
 
-  void InsertLeafPageNode(int insert_pos,const KeyType& key,const ValueType& val,LeafPage* leaf_page,bool init = false);
+  void InsertInnerPageNode(int insert_pos,const KeyType& key,const page_id_t& val,InternalPage* inner_page,bool init);
 
-  void InsertInnerPageNode(int insert_pos,const KeyType& key,const page_id_t& val,InternalPage* inner_page,bool init = false);
-
-  void SplitPage(int split_pos,int new_pgid,BPlusTreePage* origional_page,BPlusTreePage* new_page,bool is_leaf = true);
+  void SplitPage(int split_pos,int new_pgid,BPlusTreePage* origional_page,BPlusTreePage* new_page,bool is_leaf);
 
   auto CheckParentPage(page_id_t parent_id)->bool;
 
@@ -150,6 +150,8 @@ class BPlusTree {
   auto DeliverToInnerPage(Context& ctx,page_id_t right_pgid,const KeyType& split_key)->page_id_t;
 
   void DeleteSpeciKeyVal(int delete_pos,LeafPage* leaf_page);
+
+  auto ParentIsSafe(const BPlusTreePage* cur_page,bool is_insert)->bool;
 
   // member variable
   std::string index_name_;
