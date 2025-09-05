@@ -236,24 +236,35 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value) -> bool 
   }
   // 执行分裂
   else{
-    int insert_pos = LowerBound(key, ctx.write_set_.back().AsMut<LeafPage>(),true);
-    if(comparator_(ctx.write_set_.back().AsMut<LeafPage>()->KeyAt(insert_pos),key) == 0){
+    auto leaf_page = ctx.write_set_.back().AsMut<LeafPage>();
+    int insert_pos = LowerBound(key,leaf_page,true);
+    if(comparator_(leaf_page->KeyAt(insert_pos),key) == 0){
       return false;
     }
     InsertLeafPageNode(insert_pos, key, value,ctx.write_set_.back().AsMut<LeafPage>(),false);
+    // 先分裂叶子节点
+    int split_pos = leaf_page->GetSize() >> 1;
+    KeyType insert_key = leaf_page->KeyAt(split_pos);
+    page_id_t new_pgid = bpm_->NewPage();
+
+    auto new_leaf_guard = bpm_->WritePage(new_pgid);
+    auto new_leaf_page = new_leaf_guard.AsMut<LeafPage>();
+    new_leaf_page->Init(leaf_max_size_);
+
+    SplitPage(split_pos, new_pgid, leaf_page, new_leaf_page,true);    
+    ctx.write_set_.pop_back();
 
     // 分裂会影响到根节点 意味着write_set里面包含header页面
     // 当前分裂孩子页面的一定是满的
     if(include_header){
       // 先声明分裂点和分裂键
-      int split_pos = -1;
-      KeyType split_key;
       while(ctx.write_set_.size() > 1){
-        auto child_page_guard = std::move(ctx.write_set_.back());
-        auto child_page = child_page_guard.AsMut<BPlusTreePage>();
-        ctx.write_set_.pop_back();
-        split_pos = child_page->IsLeafPage() ? child_page->GetSize() >> 1 : (child_page->GetSize() >> 1) + 1;
-        
+        auto child_page = ctx.write_set_.back().AsMut<InternalPage>();
+        insert_pos = ctx.indexs_store_.top() + 1;
+        ctx.indexs_store_.pop();
+        InsertInnerPageNode(insert_pos, insert_key, new_pgid, child_page, false);
+        split_pos = (child_page->GetSize() >> 1) + 1;
+
         
       }
 
