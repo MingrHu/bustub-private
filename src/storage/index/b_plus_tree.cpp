@@ -415,7 +415,6 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key) {
   auto cur_page = cur_page_guard.AsMut<LeafPage>();
   // 先进行删除操作
   DeleteSpeciKeyVal(dl_pos, cur_page);
-  // 更新next_pgid
 
   if(cur_page_guard.GetPageId() == ctx.root_page_id_){
     AdjustRoot(cur_page);
@@ -424,6 +423,9 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key) {
     bpm_->DeletePage(dl_pgid);
     return;
   }
+
+  // 更新next_pgid
+  int leaf_page_index = ctx.write_set_.back().As<LeafPage>()->;
 
   // auto rsibpgid = INVALID_PAGE_ID;
   // auto lsibpgid = INVALID_PAGE_ID;
@@ -637,7 +639,7 @@ void BPLUSTREE_TYPE::SplitPage(int split_pos,int new_pgid,BPlusTreePage* origion
     // 将当前节点的分割点及以后键值复制到新的节点里面
     for(int i = split_pos;i <leaf_max_size_;i++){
       InsertLeafPageNode(i - split_pos, org_leaf_page->KeyAt(i), 
-      new_leaf_page->ValueAt(i), new_leaf_page);
+      org_leaf_page->ValueAt(i), new_leaf_page);
     }
     org_leaf_page->SetSize(split_pos);
   }
@@ -651,7 +653,7 @@ void BPLUSTREE_TYPE::SplitPage(int split_pos,int new_pgid,BPlusTreePage* origion
     // inner比较特殊 必须从1开始 0是哨兵节点
     for(int i = split_pos + 1;i <internal_max_size_;i++){
       InsertInnerPageNode(i - split_pos, org_inner_page->KeyAt(i), 
-      new_inner_page->ValueAt(i), new_inner_page);
+      org_inner_page->ValueAt(i), new_inner_page);
     }
     // 原节点丢弃分割点
     org_inner_page->SetSize(split_pos);
