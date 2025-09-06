@@ -137,7 +137,7 @@ class BPlusTree {
   // 返回第一个大于等于目标键的位置
   auto LowerBound(const KeyType& key,const BPlusTreePage* target_page,bool is_leaf)->int;
 
-  void InsertLeafPageNode(int insert_pos,const KeyType& key,const ValueType& val,LeafPage* leaf_page,bool init);
+  void InsertLeafPageNode(int insert_pos,const KeyType& key,const ValueType& val,LeafPage* leaf_page);
 
   void InsertInnerPageNode(int insert_pos,const KeyType& key,const page_id_t& val,InternalPage* inner_page);
 
@@ -146,6 +146,14 @@ class BPlusTree {
   void DeleteSpeciKeyVal(int delete_pos,LeafPage* leaf_page);
 
   auto ParentIsSafe(const BPlusTreePage* cur_page,bool is_insert)->bool;
+
+  void AdjustRoot(BPlusTreePage* old_root_page);
+
+  auto BorrowSibLeft(BPlusTreePage* sib_page,BPlusTreePage* poor_page,bool is_leaf,const KeyType &key)->KeyType;
+
+  auto BorrowSibRight(BPlusTreePage* sib_page,BPlusTreePage* poor_page,bool is_leaf,const KeyType &key)->KeyType;
+
+  auto Redistribute(InternalPage* parent,int child_index,bool is_leaf,BPlusTreePage* child_page)->bool;
 
   // member variable
   std::string index_name_;

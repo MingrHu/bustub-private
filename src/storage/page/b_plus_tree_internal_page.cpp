@@ -53,7 +53,7 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::Init(int max_size)
  */
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::KeyAt(int index) const -> KeyType {
-  BUSTUB_ENSURE(index != 0,"Inner_page_index must not be zero!\n");
+  BUSTUB_ENSURE(index < GetSize() || index > 0,"Inner_page_index range out of size!\n");
   return key_array_[index];
 }
 
@@ -65,14 +65,14 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::KeyAt(int index) const -> KeyType {
  */
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_INTERNAL_PAGE_TYPE::SetKeyAt(int index, const KeyType &key) {
-  BUSTUB_ENSURE(index < GetMaxSize(),"Inner_page_index range out of max_size!\n");
+  BUSTUB_ENSURE(index < GetMaxSize() || index > 0,"Inner_page_index range out of size!\n");
   key_array_[index] = key;
 }
 
 
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_INTERNAL_PAGE_TYPE::SetValueAt(int index,const ValueType &val){
-  BUSTUB_ENSURE(index < GetMaxSize(),"Inner_page_index range out of max_size!\n");
+  BUSTUB_ENSURE(index < GetSize(),"Inner_page_index range out of max_size!\n");
   page_id_array_[index] = val;
 }
 
@@ -97,7 +97,7 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::ValueIndex(const ValueType &value) const ->
  */
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::ValueAt(int index) const -> ValueType {
-  BUSTUB_ENSURE(index < GetMaxSize(),"Inner_page_index range out of max_size!\n");
+  BUSTUB_ENSURE(index < GetSize(),"Inner_page_index range out of max_size!\n");
   return page_id_array_[index];
 }
 
