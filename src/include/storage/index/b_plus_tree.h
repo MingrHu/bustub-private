@@ -143,7 +143,7 @@ class BPlusTree {
 
   void SplitPage(int split_pos,int new_pgid,BPlusTreePage* origional_page,BPlusTreePage* new_page,bool is_leaf);
 
-  void DeleteSpeciKeyVal(int delete_pos,LeafPage* leaf_page);
+  void DeleteSpeciKeyVal(int delete_pos,BPlusTreePage* op_page,bool is_leaf);
 
   auto ParentIsSafe(const BPlusTreePage* cur_page,bool is_insert)->bool;
 
@@ -154,6 +154,8 @@ class BPlusTree {
   auto BorrowSibRight(BPlusTreePage* sib_page,BPlusTreePage* poor_page,bool is_leaf,const KeyType &key)->KeyType;
 
   auto Redistribute(InternalPage* parent,int child_index,bool is_leaf,BPlusTreePage* child_page)->bool;
+
+  auto MergeNode(InternalPage* parent,int child_index,bool is_leaf,BPlusTreePage* child_page)->bool;
 
   // member variable
   std::string index_name_;

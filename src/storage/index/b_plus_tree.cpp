@@ -15,6 +15,7 @@
 #include <optional>
 #include <utility>
 #include "common/config.h"
+#include "gtest/gtest.h"
 #include "storage/index/b_plus_tree_debug.h"
 #include "storage/page/b_plus_tree_header_page.h"
 #include "storage/page/b_plus_tree_page.h"
@@ -376,7 +377,7 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key) {
       return;
     }
     // 删除这个键值
-    DeleteSpeciKeyVal(index, waited_leaf_page);
+    DeleteSpeciKeyVal(index, waited_leaf_page,true);
     return;
   }
 
@@ -404,40 +405,80 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key) {
     return;
   }
 
-  if(ParentIsSafe(ctx.write_set_.back().AsMut<LeafPage>(), false)){
-    DeleteSpeciKeyVal(dl_pos, waited_leaf_page);
+  // 对叶子节点先操作
+  // 1 先检查其父节点是否安全 安全就直接删除并返回
+  auto leaf_page_guard = std::move(ctx.write_set_.back());
+  ctx.write_set_.pop_back();
+  auto leaf_page = leaf_page_guard.AsMut<LeafPage>();
+
+  if(ParentIsSafe(leaf_page, false)){
+    DeleteSpeciKeyVal(dl_pos, leaf_page,true);
     return;
   }
 
   // 叶子节点会发生借用或者合并 
-  auto cur_page_guard = std::move(ctx.write_set_.back());
-  ctx.write_set_.pop_back();
-  auto cur_page = cur_page_guard.AsMut<LeafPage>();
-  // 先进行删除操作
-  DeleteSpeciKeyVal(dl_pos, cur_page);
-
-  if(cur_page_guard.GetPageId() == ctx.root_page_id_){
-    AdjustRoot(cur_page);
-    auto dl_pgid = cur_page_guard.GetPageId();
-    cur_page_guard.Drop();
+  // 说明前叶子节点一定会被删空 
+  // 2 执行叶子节点的删除
+  // 先进行删除操作 这个删除操作一定会导致叶节点为空
+  DeleteSpeciKeyVal(dl_pos, leaf_page,true);
+  // 又是根又是叶节点
+  // 3 删除后检查这个节点是否为根节点 如果为根节点就不存在后面的操作
+  if(leaf_pgid == ctx.root_page_id_){
+    AdjustRoot(leaf_page);
+    page_id_t dl_pgid = leaf_page_guard.GetPageId();
+    leaf_page_guard.Drop();
     bpm_->DeletePage(dl_pgid);
     return;
   }
 
-  // 更新next_pgid
-  int leaf_page_index = ctx.write_set_.back().As<LeafPage>()->;
+  int leaf_page_index = ctx.indexs_store_.top();
+  ctx.indexs_store_.pop();
+  // 更新当前叶节点的next_pgid信息
+  // 4 如果不是根节点 尝试借用或合并
+  auto leaf_parent_page = ctx.write_set_.back().AsMut<InternalPage>();
 
-  // auto rsibpgid = INVALID_PAGE_ID;
-  // auto lsibpgid = INVALID_PAGE_ID;
-  // bool op_new_root = true;
-  // while(!ctx.write_set_.empty()){
-  //   auto parent_page = ctx.write_set_.back().AsMut<InternalPage>();
-  //   int pre_pos = ctx.indexs_store_.top();
-  //   ctx.indexs_store_.pop();
-  //   // 左借用 右借用 左合并 右合并
+  // 4.1先尝试借用兄弟节点
+  bool redis_out = Redistribute(leaf_parent_page,leaf_page_index,true,leaf_page);
+  if(redis_out){
+    return;
+  }
+  // 4.2再尝试合并节点 合并节点会涉及到原来页面的删除 因此需要更新叶子的next_pgid
+
+  
+
+  // 重复执行叶子节点的相关操作
+  // 与叶子节点不同的是当前操作节点都是已经被删除相关键值后的
+  // 而且不存在页面被删空的情况 除非是根节点页面
+  while(!ctx.write_set_.empty()){
+    auto op_page_guard = std::move(ctx.write_set_.back());
+    auto op_page = op_page_guard.AsMut<InternalPage>();
+    ctx.write_set_.pop_back();
+
+    // 1 检查当前节点是否需要进行合并或者借用
+    if(op_page->GetSize() >= op_page->GetMinSize()){
+      return;
+    }
+    // 2 检查当前节点是否为根节点
+    if(op_page_guard.GetPageId() == ctx.root_page_id_){
+      AdjustRoot(op_page);
+      auto op_pgid = op_page_guard.GetPageId();
+      op_page_guard.Drop();
+      bpm_->DeletePage(op_pgid);
+      return;
+    }
+
+    auto parent_page = ctx.write_set_.back().AsMut<InternalPage>();
+    int index = ctx.indexs_store_.top();
+    ctx.indexs_store_.pop();
+    // 3 先尝试借用兄弟节点
+    
 
 
-  // }
+
+    // 左借用 右借用 左合并 右合并
+
+
+  }
 
 
     
@@ -661,12 +702,26 @@ void BPLUSTREE_TYPE::SplitPage(int split_pos,int new_pgid,BPlusTreePage* origion
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-void BPLUSTREE_TYPE::DeleteSpeciKeyVal(int delete_pos,LeafPage* leaf_page){
-  for(int i = delete_pos;i < leaf_page->GetSize() - 1;i++){
-    leaf_page->SetKeyAt(i, leaf_page->KeyAt(i+1));
-    leaf_page->SetValueAt(i, leaf_page->ValueAt(i+1));
+void BPLUSTREE_TYPE::DeleteSpeciKeyVal(int delete_pos,BPlusTreePage* op_page,bool is_leaf){
+  // 如果删除的是叶子节点的键值
+  if(is_leaf){
+    auto leaf_page = static_cast<LeafPage*>(op_page);
+    for(int i = delete_pos;i < leaf_page->GetSize() - 1;i++){
+      leaf_page->SetKeyAt(i, leaf_page->KeyAt(i+1));
+      leaf_page->SetValueAt(i, leaf_page->ValueAt(i+1));
+    }
   }
-  leaf_page->ChangeSizeBy(-1);
+  // 否则删除的内部节点的键值
+  else{
+    auto inner_page = static_cast<InternalPage*>(op_page);
+    for(int i = delete_pos;i < inner_page->GetSize() - 1;i++){
+      if(i > 0){
+        inner_page->SetKeyAt(i, inner_page->KeyAt(i + 1));
+      }
+      inner_page->SetValueAt(i,inner_page->ValueAt(i + 1));
+    }
+  }
+  op_page->ChangeSizeBy(-1);
 }
 
 INDEX_TEMPLATE_ARGUMENTS
@@ -757,7 +812,6 @@ auto BPLUSTREE_TYPE::BorrowSibRight(BPlusTreePage* sib_page,BPlusTreePage* poor_
   return right_sib_key;
 }
 
-
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::Redistribute(InternalPage* parent,int child_index,bool is_leaf,BPlusTreePage* child_page)->bool{
  
@@ -792,6 +846,7 @@ auto BPLUSTREE_TYPE::Redistribute(InternalPage* parent,int child_index,bool is_l
       page_id_t rsib_pgid = parent->ValueAt(child_index + 1);
       auto right_sib_guard = bpm_->WritePage(rsib_pgid);
       auto right_sib_page = right_sib_guard.AsMut<BPlusTreePage>();
+      // 判断右兄弟是否满足要求
       if(right_sib_page->GetSize() >= right_sib_page->GetMinSize() + 1){
         
         KeyType parent_key = parent->KeyAt(child_index + 1);
@@ -804,6 +859,91 @@ auto BPLUSTREE_TYPE::Redistribute(InternalPage* parent,int child_index,bool is_l
   };
 
   return (redistribute_left(is_leaf) || redistribute_right(is_leaf));
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto BPLUSTREE_TYPE::MergeNode(InternalPage* parent,int child_index,bool is_leaf,BPlusTreePage* child_page)->bool{
+
+  // 向左合并过程：把当前节点的所有键值移动到左兄弟
+  // 父节点删除当前节点的对应键
+  int cur_size = child_page->GetSize();
+  auto merge_left = [&,this](bool is_leaf)->bool{
+    if(child_index - 1 >=0){
+      page_id_t lsib_pgid = parent->ValueAt(child_index - 1);
+      auto left_sib_guard = bpm_->WritePage(lsib_pgid);
+      auto left_sib_page = left_sib_guard.AsMut<BPlusTreePage>();
+      int sibsize = left_sib_page->GetSize();
+      // 根据是否为叶子区分
+      if(is_leaf){
+        auto leaf_sib_page = static_cast<LeafPage*>(left_sib_page);
+        auto org_page = static_cast<LeafPage*>(child_page); 
+        if(leaf_sib_page->GetSize() + cur_size >leaf_max_size_){
+          return false;
+        }
+        for(int i = 0;i<cur_size;i++){
+          InsertLeafPageNode(sibsize + i, org_page->KeyAt(i), 
+          org_page->ValueAt(i), leaf_sib_page);
+        }
+        if(child_index > 0){
+          leaf_sib_page->SetNextPageId(org_page->GetNextPageId());
+        }
+      }
+      else{
+        auto leaf_sib_page = static_cast<InternalPage*>(left_sib_page);
+        auto org_page = static_cast<InternalPage*>(child_page); 
+        if(leaf_sib_page->GetSize() + cur_size > internal_max_size_){
+          return false;
+        }
+        for(int i = 0;i<cur_size;i++){
+          InsertInnerPageNode(sibsize + i, org_page->KeyAt(i), 
+          org_page->ValueAt(i), leaf_sib_page);
+        }
+      }
+      // 删除父节点的相关键值
+      DeleteSpeciKeyVal(child_index, parent, is_leaf);
+      return true;
+    }
+    return false;
+  };
+
+  // 向右合并的方法就是把当前所有键值移动到右兄弟
+  // 移动完成后删除父节点对右兄弟节点的键值
+  auto merge_right = [&,this](bool is_leaf)->bool{
+    if(child_index + 1 <parent->GetSize()){
+      page_id_t rsib_pgid = parent->ValueAt(child_index - 1);
+      auto right_sib_guard = bpm_->WritePage(rsib_pgid);
+      auto right_sib_page = right_sib_guard.AsMut<BPlusTreePage>();
+      int sibsize = right_sib_page->GetSize();
+      // 根据是否为叶子区分
+      if(is_leaf){
+        auto leaf_sib_page = static_cast<LeafPage*>(right_sib_page);
+        auto org_page = static_cast<LeafPage*>(child_page); 
+        if(leaf_sib_page->GetSize() + cur_size >leaf_max_size_){
+          return false;
+        }
+        for(int i = 0;i<cur_size;i++){
+          InsertLeafPageNode(i, org_page->KeyAt(i), 
+          org_page->ValueAt(i), leaf_sib_page);
+        }
+      }
+      else{
+        auto leaf_sib_page = static_cast<InternalPage*>(right_sib_page);
+        auto org_page = static_cast<InternalPage*>(child_page); 
+        if(leaf_sib_page->GetSize() + cur_size > internal_max_size_){
+          return false;
+        }
+        for(int i = 0;i<cur_size;i++){
+          InsertInnerPageNode(i, org_page->KeyAt(i), 
+          org_page->ValueAt(i), leaf_sib_page);
+        }
+      }
+      DeleteSpeciKeyVal(child_index + 1, parent, is_leaf);
+      return true;
+    }
+    return false;
+  };
+
+  return (merge_left(is_leaf) || merge_right(is_leaf));
 }
 
 template class BPlusTree<GenericKey<4>, RID, GenericComparator<4>>;
