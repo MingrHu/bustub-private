@@ -153,9 +153,11 @@ class BPlusTree {
 
   auto BorrowSibRight(BPlusTreePage* sib_page,BPlusTreePage* poor_page,bool is_leaf,const KeyType &key)->KeyType;
 
+  void MoveToLeft(BPlusTreePage* sib_page,BPlusTreePage* cur_page,bool is_leaf,KeyType &key);
+
   auto Redistribute(InternalPage* parent,int child_index,bool is_leaf,BPlusTreePage* child_page)->bool;
 
-  auto MergeNode(InternalPage* parent,int child_index,bool is_leaf,BPlusTreePage* child_page)->bool;
+  auto MergeNode(InternalPage* parent,int child_index,bool is_leaf,BPlusTreePage* child_page)->page_id_t;
 
   // member variable
   std::string index_name_;

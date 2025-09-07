@@ -727,7 +727,7 @@ void BPLUSTREE_TYPE::DeleteSpeciKeyVal(int delete_pos,BPlusTreePage* op_page,boo
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::ParentIsSafe(const BPlusTreePage* cur_page,bool is_insert)->bool{
   if(is_insert){
-    return (cur_page->GetSize() < cur_page->GetMaxSize() - 1);
+    return (cur_page->GetSize() < cur_page->GetMaxSize());
   }  
   return cur_page->GetSize() > cur_page->GetMinSize();
 }
@@ -758,7 +758,8 @@ auto BPLUSTREE_TYPE::BorrowSibLeft(BPlusTreePage* sib_page,BPlusTreePage* poor_p
     // 拿走左兄弟最大的值
     left_sib_key = sib_leaf_page->KeyAt(sib_size - 1);
     auto val = sib_leaf_page->ValueAt(sib_size - 1);
-    InsertLeafPageNode(0, key, val, poor_leaf_page);
+    InsertLeafPageNode(0, left_sib_key, val, poor_leaf_page);
+    DeleteSpeciKeyVal(sib_size - 1, sib_leaf_page, true);
   }
   else{
     auto sib_inner_page = static_cast<InternalPage*>(sib_page);
@@ -768,15 +769,14 @@ auto BPLUSTREE_TYPE::BorrowSibLeft(BPlusTreePage* sib_page,BPlusTreePage* poor_p
     left_sib_key = sib_inner_page->KeyAt(sib_size - 1);
     auto val = sib_inner_page->ValueAt(sib_size - 1); 
     InsertInnerPageNode(0, key, val, poor_inner_page);
+    DeleteSpeciKeyVal(sib_size - 1, sib_inner_page, false);
   }
-  sib_page->ChangeSizeBy(-1);
   return left_sib_key;
 }
 
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::BorrowSibRight(BPlusTreePage* sib_page,BPlusTreePage* poor_page,bool is_leaf,const KeyType &key)->KeyType{
   int poor_size = poor_page->GetSize();
-  int org_size = sib_page->GetSize();
   KeyType right_sib_key;
   if(is_leaf){
     auto sib_leaf_page = static_cast<LeafPage*>(sib_page);
@@ -784,12 +784,9 @@ auto BPLUSTREE_TYPE::BorrowSibRight(BPlusTreePage* sib_page,BPlusTreePage* poor_
     // 拿走右兄弟最小的值
     auto val = sib_leaf_page->ValueAt(0);
     right_sib_key = sib_leaf_page->KeyAt(0);
-    InsertLeafPageNode(poor_size, key, val, poor_leaf_page);
+    InsertLeafPageNode(poor_size, right_sib_key, val, poor_leaf_page);
     // 叶子节点直接两个一块往左移
-    for(int i = 0;i < org_size - 1;i++){
-      sib_leaf_page->SetValueAt(i,sib_leaf_page->ValueAt(i + 1));
-      sib_leaf_page->SetKeyAt(i,sib_leaf_page->KeyAt(i + 1));
-    }
+    DeleteSpeciKeyVal(0, sib_leaf_page, true);
   }
   else{
     auto sib_inner_page = static_cast<InternalPage*>(sib_page);
@@ -799,25 +796,19 @@ auto BPLUSTREE_TYPE::BorrowSibRight(BPlusTreePage* sib_page,BPlusTreePage* poor_
     auto val = sib_inner_page->ValueAt(0); 
     right_sib_key = sib_inner_page->KeyAt(1);
     
-    InsertInnerPageNode(poor_size, key, val, poor_inner_page);
-    // 叶子节点直接两个一块往左移
-    for(int i = 0;i < org_size - 1;i++){
-      sib_inner_page->SetValueAt(i,sib_inner_page->ValueAt(i + 1));
-      if(i > 0){
-        sib_inner_page->SetKeyAt(i,sib_inner_page->KeyAt(i + 1));
-      }
-    }
+    InsertInnerPageNode(poor_size, right_sib_key, val, poor_inner_page);
+    DeleteSpeciKeyVal(0, sib_inner_page, false);
   }
-  sib_page->ChangeSizeBy(-1);
   return right_sib_key;
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::Redistribute(InternalPage* parent,int child_index,bool is_leaf,BPlusTreePage* child_page)->bool{
+auto BPLUSTREE_TYPE::Redistribute(InternalPage* parent,int child_index,bool is_leaf,BPlusTreePage* op_page)->bool{
  
   // 向左借简而言之就是 把左边兄弟的最大节点值借走放到当前节点值的第一个位置
   // 左兄弟的父节点键不变 当前节点的父节点键就必须更新为左节点借走的键
-  // 对于当前节点的第一个键 则为之前父节点对应当前节点的键
+  // 对于当前节点的第一个键 如果是内部节点则为之前父节点对应当前节点的键
+  // 否则第一个键为借走的左兄弟最大的键
   auto redistribute_left = [&,this](bool is_leaf)->bool{
     // 判断是否有左兄弟
     if(child_index - 1 >= 0){
@@ -828,7 +819,7 @@ auto BPLUSTREE_TYPE::Redistribute(InternalPage* parent,int child_index,bool is_l
       if(left_sib_page->GetSize() >= left_sib_page->GetMinSize() + 1){
 
         KeyType parent_key = parent->KeyAt(child_index);
-        KeyType borrow_key = BorrowSibLeft(left_sib_page, child_page, is_leaf,parent_key);
+        KeyType borrow_key = BorrowSibLeft(left_sib_page, op_page, is_leaf,parent_key);
         parent->SetKeyAt(child_index, borrow_key);
         return true;
       }
@@ -838,7 +829,8 @@ auto BPLUSTREE_TYPE::Redistribute(InternalPage* parent,int child_index,bool is_l
 
   // 向右借简而言之就是 把右边兄弟的最小节点值借走放到当前节点值的最后一个位置
   // 那么对应的右兄弟的父节点键变为右兄弟的第一个有效键 
-  // 当前节点的最后一个键就必须更新为之前的右兄弟父节点对应键
+  // 当前节点如果是内部节点 则最后一个键就必须更新为之前的右兄弟父节点对应键
+  // 如果当前节点是叶子节点 则最后一个键为借走的右兄弟的键
   auto redistribute_right = [&,this](bool is_leaf)->bool{
     // 判断是否有右兄弟
     if(child_index + 1 < parent->GetSize()){
@@ -850,100 +842,99 @@ auto BPLUSTREE_TYPE::Redistribute(InternalPage* parent,int child_index,bool is_l
       if(right_sib_page->GetSize() >= right_sib_page->GetMinSize() + 1){
         
         KeyType parent_key = parent->KeyAt(child_index + 1);
-        KeyType borrow_key = BorrowSibRight(right_sib_page, child_page, is_leaf, parent_key);
+        KeyType borrow_key = BorrowSibRight(right_sib_page, op_page, is_leaf, parent_key);
         parent->SetKeyAt(child_index + 1, borrow_key);
         return true;
       }
     }
     return false;
   };
-
   return (redistribute_left(is_leaf) || redistribute_right(is_leaf));
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::MergeNode(InternalPage* parent,int child_index,bool is_leaf,BPlusTreePage* child_page)->bool{
+void BPLUSTREE_TYPE::MoveToLeft(BPlusTreePage* sib_page,BPlusTreePage* cur_page,bool is_leaf,KeyType &key){
+  int cur_page_size = cur_page->GetSize();
+  int sib_page_size = sib_page->GetSize();
+  // 根据是否为叶子区分
+  // 把当前节点键值全部移动到左节点
+  if(is_leaf){
+    auto leaf_sib_page = static_cast<LeafPage*>(sib_page);
+    auto org_page = static_cast<LeafPage*>(cur_page); 
+    for(int i = 0;i < cur_page_size;i++){
+      InsertLeafPageNode(sib_page_size + i, org_page->KeyAt(i), 
+      org_page->ValueAt(i), leaf_sib_page);
+    }
+    // 左节点接收当前节点的右指针
+    leaf_sib_page->SetNextPageId(org_page->GetNextPageId());
+  }
+  else{
+    auto inner_sib_page = static_cast<InternalPage*>(sib_page);
+    auto org_page = static_cast<InternalPage*>(cur_page); 
+    for(int i = 0;i < cur_page_size;i++){
+      KeyType insert_key = (i == 0 ? key:org_page->KeyAt(i));
+      InsertInnerPageNode(sib_page_size + i, insert_key, 
+      org_page->ValueAt(i), inner_sib_page);
+    }
+  }
+}
 
-  // 向左合并过程：把当前节点的所有键值移动到左兄弟
+INDEX_TEMPLATE_ARGUMENTS
+auto BPLUSTREE_TYPE::MergeNode(InternalPage* parent,int child_index,bool is_leaf,BPlusTreePage* op_page)->page_id_t{
+
+  // 向左合并过程：把当前节点的所有值移动到左兄弟
   // 父节点删除当前节点的对应键
-  int cur_size = child_page->GetSize();
+  // 如果是内部节点左移 则需要把父亲节点对应当前的键移动到左兄弟
+  // 如果是叶子节点 则直接把当前所有键也移动过去
+  int cur_size = op_page->GetSize();
+  page_id_t res_pgid = INVALID_PAGE_ID;
   auto merge_left = [&,this](bool is_leaf)->bool{
-    if(child_index - 1 >=0){
+    if(child_index - 1 >= 0){
+      // 先找到左兄弟
       page_id_t lsib_pgid = parent->ValueAt(child_index - 1);
       auto left_sib_guard = bpm_->WritePage(lsib_pgid);
       auto left_sib_page = left_sib_guard.AsMut<BPlusTreePage>();
-      int sibsize = left_sib_page->GetSize();
-      // 根据是否为叶子区分
-      if(is_leaf){
-        auto leaf_sib_page = static_cast<LeafPage*>(left_sib_page);
-        auto org_page = static_cast<LeafPage*>(child_page); 
-        if(leaf_sib_page->GetSize() + cur_size >leaf_max_size_){
-          return false;
-        }
-        for(int i = 0;i<cur_size;i++){
-          InsertLeafPageNode(sibsize + i, org_page->KeyAt(i), 
-          org_page->ValueAt(i), leaf_sib_page);
-        }
-        if(child_index > 0){
-          leaf_sib_page->SetNextPageId(org_page->GetNextPageId());
-        }
+      if(left_sib_page->GetSize() + cur_size <= op_page->GetMaxSize()){
+        KeyType parent_key = parent->KeyAt(child_index);
+        MoveToLeft(left_sib_page, op_page, is_leaf, parent_key);
+        // 删除父节点的相关键值
+        DeleteSpeciKeyVal(child_index, parent, is_leaf);
+        return true;
       }
-      else{
-        auto leaf_sib_page = static_cast<InternalPage*>(left_sib_page);
-        auto org_page = static_cast<InternalPage*>(child_page); 
-        if(leaf_sib_page->GetSize() + cur_size > internal_max_size_){
-          return false;
-        }
-        for(int i = 0;i<cur_size;i++){
-          InsertInnerPageNode(sibsize + i, org_page->KeyAt(i), 
-          org_page->ValueAt(i), leaf_sib_page);
-        }
-      }
-      // 删除父节点的相关键值
-      DeleteSpeciKeyVal(child_index, parent, is_leaf);
-      return true;
     }
     return false;
   };
 
-  // 向右合并的方法就是把当前所有键值移动到右兄弟
-  // 移动完成后删除父节点对右兄弟节点的键值
+  // 和上述的当前节点左合并一致
+  // 向右合并的方法就是把右兄弟所有值移动到当前节点
+  // 移动完成后父节点先删除右兄弟在父节点的对应键
+  // 如果是内部节点则需要把右兄弟对应父节点的键移动到当前节点尾
+  // 叶子节点直接移动就行
   auto merge_right = [&,this](bool is_leaf)->bool{
     if(child_index + 1 <parent->GetSize()){
       page_id_t rsib_pgid = parent->ValueAt(child_index - 1);
       auto right_sib_guard = bpm_->WritePage(rsib_pgid);
-      auto right_sib_page = right_sib_guard.AsMut<BPlusTreePage>();
-      int sibsize = right_sib_page->GetSize();
-      // 根据是否为叶子区分
-      if(is_leaf){
-        auto leaf_sib_page = static_cast<LeafPage*>(right_sib_page);
-        auto org_page = static_cast<LeafPage*>(child_page); 
-        if(leaf_sib_page->GetSize() + cur_size >leaf_max_size_){
-          return false;
-        }
-        for(int i = 0;i<cur_size;i++){
-          InsertLeafPageNode(i, org_page->KeyAt(i), 
-          org_page->ValueAt(i), leaf_sib_page);
-        }
+      auto wait_op_page = right_sib_guard.AsMut<BPlusTreePage>();
+      if(wait_op_page->GetSize() + cur_size <= op_page->GetMaxSize()){
+        KeyType parent_key = parent->KeyAt(child_index + 1);
+        // 直接反着来就行
+        MoveToLeft(op_page, wait_op_page, is_leaf, parent_key);
+        DeleteSpeciKeyVal(child_index + 1, parent, is_leaf);
+        res_pgid = right_sib_guard.GetPageId();
+        return true;
       }
-      else{
-        auto leaf_sib_page = static_cast<InternalPage*>(right_sib_page);
-        auto org_page = static_cast<InternalPage*>(child_page); 
-        if(leaf_sib_page->GetSize() + cur_size > internal_max_size_){
-          return false;
-        }
-        for(int i = 0;i<cur_size;i++){
-          InsertInnerPageNode(i, org_page->KeyAt(i), 
-          org_page->ValueAt(i), leaf_sib_page);
-        }
-      }
-      DeleteSpeciKeyVal(child_index + 1, parent, is_leaf);
-      return true;
     }
     return false;
   };
 
-  return (merge_left(is_leaf) || merge_right(is_leaf));
+  if(merge_left(is_leaf)){
+
+  }
+  else{
+    merge_right(is_leaf);
+  }
+
+  return res_pgid;
 }
 
 template class BPlusTree<GenericKey<4>, RID, GenericComparator<4>>;
