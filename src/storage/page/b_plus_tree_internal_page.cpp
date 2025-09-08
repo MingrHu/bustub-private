@@ -72,7 +72,7 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::SetKeyAt(int index, const KeyType &key) {
 
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_INTERNAL_PAGE_TYPE::SetValueAt(int index,const ValueType &val){
-  BUSTUB_ENSURE(index < GetSize(),"Inner_page_index range out of max_size!\n");
+  BUSTUB_ENSURE(index < GetMaxSize(),"Inner_page_index range out of max_size!\n");
   page_id_array_[index] = val;
 }
 
