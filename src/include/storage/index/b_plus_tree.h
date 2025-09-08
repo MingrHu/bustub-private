@@ -141,8 +141,11 @@ class BPlusTree {
 
   void InsertInnerPageNode(int insert_pos,const KeyType& key,const page_id_t& val,InternalPage* inner_page);
 
-  void InnerSplitPage(int split_pos,int new_pgid,InternalPage* origional_page,InternalPage* new_page,
+  void InnerSplitPage(int split_pos,InternalPage* origional_page,InternalPage* new_page,
     std::vector<KeyType>& key_block,std::vector<page_id_t>& val_block);
+
+  void LeafSplitPage(int split_pos,LeafPage* origional_page,LeafPage* new_page,
+  page_id_t right_pgid,std::vector<KeyType>& key_block,std::vector<ValueType>& val_block);
 
   void DeleteSpeciKeyVal(int delete_pos,BPlusTreePage* op_page,bool is_leaf);
 
