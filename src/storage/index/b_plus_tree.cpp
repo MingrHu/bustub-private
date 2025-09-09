@@ -76,9 +76,9 @@ auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
   if(root_pgid == INVALID_PAGE_ID){
     return false;
   }
+  guard.Drop();
   // 先拿到根节点
   ctx.read_set_.push_back(bpm_->ReadPage(root_pgid));
-  guard.Drop();
   int index = -1;
 
   while(!ctx.read_set_.front().As<BPlusTreePage>()->IsLeafPage()){
@@ -86,8 +86,7 @@ auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
     auto guard = std::move(ctx.read_set_.back());
     ctx.read_set_.pop_back();
     // 待操作页面
-    auto op_page = guard.As<BPlusTreePage>();
-    const auto inner_page = static_cast<const InternalPage*>(op_page);
+    auto inner_page = guard.As<InternalPage>();
     // inner_page 查找的要特殊一些 
     index = KeyBinarySearch(key, inner_page,false);
     page_id_t pgid = inner_page->ValueAt(index);
@@ -527,7 +526,26 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key) {
  * @return : index iterator
  */
 INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::Begin() -> INDEXITERATOR_TYPE { UNIMPLEMENTED("TODO(P2): Add implementation."); }
+auto BPLUSTREE_TYPE::Begin() -> INDEXITERATOR_TYPE 
+{ 
+  auto header_page_guard = bpm_->ReadPage(header_page_id_);
+  auto header_page = header_page_guard.As<BPlusTreeHeaderPage>();
+  page_id_t cur_pgid = header_page->root_page_id_;
+  if(cur_pgid == INVALID_PAGE_ID){
+    return INDEXITERATOR_TYPE {bpm_,INVALID_PAGE_ID,-1,IndexPageType::INVALID_INDEX_PAGE};
+  }
+  header_page_guard.Drop();
+  Context ctx;
+  ctx.read_set_.push_back(bpm_->ReadPage(cur_pgid));
+  while(!ctx.read_set_.back().As<BPlusTreePage>()->IsLeafPage()){
+    auto cur_page_guard = std::move(ctx.read_set_.back());
+    ctx.read_set_.pop_back();
+    auto cur_page = cur_page_guard.As<InternalPage>();
+    cur_pgid = cur_page->ValueAt(0);
+    ctx.read_set_.push_back(bpm_->ReadPage(cur_pgid));
+  }
+  return INDEXITERATOR_TYPE {bpm_,cur_pgid,0,IndexPageType::LEAF_PAGE};
+}
 
 /**
  * @brief Input parameter is low key, find the leaf page that contains the input key
@@ -535,7 +553,32 @@ auto BPLUSTREE_TYPE::Begin() -> INDEXITERATOR_TYPE { UNIMPLEMENTED("TODO(P2): Ad
  * @return : index iterator
  */
 INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::Begin(const KeyType &key) -> INDEXITERATOR_TYPE { UNIMPLEMENTED("TODO(P2): Add implementation."); }
+auto BPLUSTREE_TYPE::Begin(const KeyType &key) -> INDEXITERATOR_TYPE { 
+  auto header_page_guard = bpm_->ReadPage(header_page_id_);
+  auto header_page = header_page_guard.As<BPlusTreeHeaderPage>();
+  page_id_t cur_pgid = header_page->root_page_id_;
+  if(cur_pgid == INVALID_PAGE_ID){
+    return INDEXITERATOR_TYPE {bpm_,INVALID_PAGE_ID,-1,IndexPageType::INVALID_INDEX_PAGE};
+  }
+  header_page_guard.Drop();
+  Context ctx;
+  ctx.read_set_.push_back(bpm_->ReadPage(cur_pgid));
+  int index = -1;
+  while(!ctx.read_set_.back().As<BPlusTreePage>()->IsLeafPage()){
+    auto cur_page_guard = std::move(ctx.read_set_.back());
+    ctx.read_set_.pop_back();
+    auto cur_page = cur_page_guard.As<InternalPage>();
+    index = KeyBinarySearch(key, cur_page,false);
+    cur_pgid = cur_page->ValueAt(index);
+    ctx.read_set_.push_back(bpm_->ReadPage(cur_pgid));
+  }
+  auto leaf_page = ctx.read_set_.back().As<LeafPage>();
+  index = KeyBinarySearch(key, leaf_page, true);
+  if(index == -1){
+    return INDEXITERATOR_TYPE {bpm_,INVALID_PAGE_ID,-1,IndexPageType::INVALID_INDEX_PAGE};   
+  }
+  return INDEXITERATOR_TYPE {bpm_,cur_pgid,index,IndexPageType::LEAF_PAGE};
+}
 
 /**
  * @brief Input parameter is void, construct an index iterator representing the end
@@ -543,7 +586,14 @@ auto BPLUSTREE_TYPE::Begin(const KeyType &key) -> INDEXITERATOR_TYPE { UNIMPLEME
  * @return : index iterator
  */
 INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::End() -> INDEXITERATOR_TYPE { UNIMPLEMENTED("TODO(P2): Add implementation."); }
+auto BPLUSTREE_TYPE::End() -> INDEXITERATOR_TYPE { 
+
+  INDEXITERATOR_TYPE res = Begin();
+  while(!res.IsEnd()){
+    ++res;
+  }
+  return res;
+}
 
 /**
  * @return Page id of the root of this tree
