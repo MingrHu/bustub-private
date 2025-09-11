@@ -6,15 +6,14 @@
 //
 // Identification: test/storage/page_guard_test.cpp
 //
-// Copyright (c) 2015-2024, Carnegie Mellon University Database Group
+// Copyright (c) 2015-2025, Carnegie Mellon University Database Group
 //
 //===----------------------------------------------------------------------===//
 
 #include <cstdio>
-#include <random>
-#include <string>
 
 #include "buffer/buffer_pool_manager.h"
+#include "common/config.h"
 #include "storage/disk/disk_manager_memory.h"
 #include "storage/page/page_guard.h"
 
@@ -25,12 +24,12 @@ namespace bustub {
 const size_t FRAMES = 10;
 const size_t K_DIST = 2;
 
-TEST(PageGuardTest, DISABLED_DropTest) {
+TEST(PageGuardTest, DropTest) {
   auto disk_manager = std::make_shared<DiskManagerUnlimitedMemory>();
   auto bpm = std::make_shared<BufferPoolManager>(FRAMES, disk_manager.get(), K_DIST);
 
   {
-    auto pid0 = bpm->NewPage();
+    const auto pid0 = bpm->NewPage();
     auto page0 = bpm->WritePage(pid0);
 
     // The page should be pinned.
@@ -45,8 +44,8 @@ TEST(PageGuardTest, DISABLED_DropTest) {
     ASSERT_EQ(0, bpm->GetPinCount(pid0));
   }  // Destructor should be called. Useless but should not cause issues.
 
-  auto pid1 = bpm->NewPage();
-  auto pid2 = bpm->NewPage();
+  const auto pid1 = bpm->NewPage();
+  const auto pid2 = bpm->NewPage();
 
   {
     auto read_guarded_page = bpm->ReadPage(pid1);
@@ -70,8 +69,8 @@ TEST(PageGuardTest, DISABLED_DropTest) {
 
   // This will hang if the latches were not unlocked correctly in the destructors.
   {
-    auto write_test1 = bpm->WritePage(pid1);
-    auto write_test2 = bpm->WritePage(pid2);
+    const auto write_test1 = bpm->WritePage(pid1);
+    const auto write_test2 = bpm->WritePage(pid2);
   }
 
   std::vector<page_id_t> page_ids;
@@ -79,7 +78,7 @@ TEST(PageGuardTest, DISABLED_DropTest) {
     // Fill up the BPM.
     std::vector<WritePageGuard> guards;
     for (size_t i = 0; i < FRAMES; i++) {
-      auto new_pid = bpm->NewPage();
+      const auto new_pid = bpm->NewPage();
       guards.push_back(bpm->WritePage(new_pid));
       ASSERT_EQ(1, bpm->GetPinCount(new_pid));
       page_ids.push_back(new_pid);
@@ -91,7 +90,7 @@ TEST(PageGuardTest, DISABLED_DropTest) {
   }
 
   // Get a new write page and edit it. We will retrieve it later
-  auto mutable_page_id = bpm->NewPage();
+  const auto mutable_page_id = bpm->NewPage();
   auto mutable_guard = bpm->WritePage(mutable_page_id);
   strcpy(mutable_guard.GetDataMut(), "data");  // NOLINT
   mutable_guard.Drop();
@@ -114,16 +113,16 @@ TEST(PageGuardTest, DISABLED_DropTest) {
   disk_manager->ShutDown();
 }
 
-TEST(PageGuardTest, DISABLED_MoveTest) {
+TEST(PageGuardTest, MoveTest) {
   auto disk_manager = std::make_shared<DiskManagerUnlimitedMemory>();
   auto bpm = std::make_shared<BufferPoolManager>(FRAMES, disk_manager.get(), K_DIST);
 
-  auto pid0 = bpm->NewPage();
-  auto pid1 = bpm->NewPage();
-  auto pid2 = bpm->NewPage();
-  auto pid3 = bpm->NewPage();
-  auto pid4 = bpm->NewPage();
-  auto pid5 = bpm->NewPage();
+  const auto pid0 = bpm->NewPage();
+  const auto pid1 = bpm->NewPage();
+  const auto pid2 = bpm->NewPage();
+  const auto pid3 = bpm->NewPage();
+  const auto pid4 = bpm->NewPage();
+  const auto pid5 = bpm->NewPage();
 
   auto guard0 = bpm->ReadPage(pid0);
   auto guard1 = bpm->ReadPage(pid1);
@@ -166,7 +165,7 @@ TEST(PageGuardTest, DISABLED_MoveTest) {
   ASSERT_EQ(1, bpm->GetPinCount(pid3));
 
   // This will hang if page 2 was not unlatched correctly.
-  { auto temp_guard2 = bpm->WritePage(pid2); }
+  { const auto temp_guard2 = bpm->WritePage(pid2); }
 
   auto guard4 = bpm->WritePage(pid4);
   auto guard5 = bpm->WritePage(pid5);
@@ -189,9 +188,110 @@ TEST(PageGuardTest, DISABLED_MoveTest) {
   ASSERT_EQ(1, bpm->GetPinCount(pid5));
 
   // This will hang if page 4 was not unlatched correctly.
-  { auto temp_guard4 = bpm->ReadPage(pid4); }
+  { const auto temp_guard4 = bpm->ReadPage(pid4); }
+
+  // Test move constructor with invalid that
+  {
+    ReadPageGuard invalidread0;
+    const auto invalidread1{std::move(invalidread0)};
+    WritePageGuard invalidwrite0;
+    const auto invalidwrite1{std::move(invalidwrite0)};
+  }
+
+  // Test move assignment with invalid that
+  {
+    const auto pid = bpm->NewPage();
+    auto read = bpm->ReadPage(pid);
+    ReadPageGuard invalidread;
+    read = std::move(invalidread);
+    auto write = bpm->WritePage(pid);
+    WritePageGuard invalidwrite;
+    write = std::move(invalidwrite);
+  }
 
   // Shutdown the disk manager and remove the temporary file we created.
+  disk_manager->ShutDown();
+}
+
+TEST(PageGuardTest, ComplexDropEdgeCaseTest) {
+  auto disk_manager = std::make_shared<DiskManagerUnlimitedMemory>();
+  auto bpm = std::make_shared<BufferPoolManager>(FRAMES, disk_manager.get(), K_DIST);
+
+  // 1. 分配多页，并反复 Drop、Read、Write 操作
+  std::vector<page_id_t> page_ids;
+  for (size_t i = 0; i < FRAMES; i++) {
+    auto pid = bpm->NewPage();
+    page_ids.push_back(pid);
+    auto wguard = bpm->WritePage(pid);
+    strcpy(wguard.GetDataMut(), "edgecase");  // 写入数据
+    wguard.Drop();
+    ASSERT_EQ(0, bpm->GetPinCount(pid));
+    // 再 drop 一次（应无副作用）
+    wguard.Drop();
+    ASSERT_EQ(0, bpm->GetPinCount(pid));
+  }
+
+  // 2. Drop 后立即再读写，应能拿到数据，且 pin 恢复，Drop 后再次检查 pin
+  for (auto pid : page_ids) {
+    auto rguard = bpm->ReadPage(pid);
+    ASSERT_EQ(1, bpm->GetPinCount(pid));
+    ASSERT_EQ(0, std::strcmp("edgecase", rguard.GetData()));
+    rguard.Drop();
+    ASSERT_EQ(0, bpm->GetPinCount(pid));
+  }
+
+  // // 3. 非法 page id drop，应该无操作/抛异常
+  // page_id_t invalid_pid = INVALID_PAGE_ID;
+  // try {
+  //   auto fake_guard = bpm->ReadPage(invalid_pid);
+  //   fake_guard.Drop();
+  //   // 不应该执行到这里
+  //   FAIL() << "Should not drop an invalid page_id";
+  // } catch (...) {
+  //   SUCCEED();
+  // }
+
+  // 4. 多线程 Drop 同一 page，检测并发安全
+  auto pid_mt = bpm->NewPage();
+  auto guard_mt = bpm->WritePage(pid_mt);
+  std::thread t1([&guard_mt]() { guard_mt.Drop(); });
+  std::thread t2([&guard_mt]() { guard_mt.Drop(); });
+  t1.join();
+  t2.join();
+  ASSERT_EQ(0, bpm->GetPinCount(pid_mt));
+
+  // 5. Pin/unpin 乱序，提前 Drop 再析构
+  {
+    auto pid = bpm->NewPage();
+    auto guard = bpm->WritePage(pid);
+    guard.Drop();
+    // 提前 Drop 后 guard 析构，应不重复 unpin，pin 应为0
+    ASSERT_EQ(0, bpm->GetPinCount(pid));
+  }
+
+  // 6. 连续新建和 drop 超出 frame 数，尝试访问未分配页
+  for (size_t i = 0; i < FRAMES * 2; i++) {
+    auto pid = bpm->NewPage();
+    auto guard = bpm->WritePage(pid);
+    guard.Drop();
+    ASSERT_EQ(0, bpm->GetPinCount(pid));
+  }
+
+  // 7. Drop 后再反复读写
+  auto pid_last = bpm->NewPage();
+  {
+    auto wguard = bpm->WritePage(pid_last);
+    strcpy(wguard.GetDataMut(), "recheck");
+    wguard.Drop();
+    ASSERT_EQ(0, bpm->GetPinCount(pid_last));
+    auto rguard = bpm->ReadPage(pid_last);
+    ASSERT_EQ(1, bpm->GetPinCount(pid_last));
+    ASSERT_EQ(0, std::strcmp("recheck", rguard.GetData()));
+    rguard.Drop();
+    ASSERT_EQ(0, bpm->GetPinCount(pid_last));
+  }
+
+  // 清理
   disk_manager->ShutDown();
 }
 

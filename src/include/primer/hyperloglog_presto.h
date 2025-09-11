@@ -1,6 +1,19 @@
+//===----------------------------------------------------------------------===//
+//
+//                         BusTub
+//
+// hyperloglog_presto.h
+//
+// Identification: src/include/primer/hyperloglog_presto.h
+//
+// Copyright (c) 2015-2025, Carnegie Mellon University Database Group
+//
+//===----------------------------------------------------------------------===//
+
 #pragma once
 
 #include <bitset>
+#include <cstdint>
 #include <memory>
 #include <mutex>  // NOLINT
 #include <sstream>
@@ -18,6 +31,7 @@
 
 /** @brief Total bucket size. */
 #define TOTAL_BUCKET_SIZE (DENSE_BUCKET_SIZE + OVERFLOW_BUCKET_SIZE)
+#define BITSET_CAPACITY 64
 
 namespace bustub {
 
@@ -36,7 +50,6 @@ class HyperLogLogPresto {
   /** @brief Disabling default constructor. */
   HyperLogLogPresto() = delete;
 
-  /** @brief Parameterized constructor. */
   explicit HyperLogLogPresto(int16_t n_leading_bits);
 
   /** @brief Returns the dense_bucket_ data structure. */
@@ -45,13 +58,11 @@ class HyperLogLogPresto {
   /** @brief Returns overflow bucket of a specific given index. */
   auto GetOverflowBucketofIndex(uint16_t idx) { return overflow_bucket_[idx]; }
 
-  /** @brief Retusn the cardinality of the set. */
+  /** @brief Returns the cardinality of the set. */
   auto GetCardinality() const -> uint64_t { return cardinality_; }
 
-  /** @brief Element is added for HLL calculation. */
   auto AddElem(KeyType val) -> void;
 
-  /** @brief Function to compute cardinality. */
   auto ComputeCardinality() -> void;
 
  private:
@@ -83,6 +94,9 @@ class HyperLogLogPresto {
   uint64_t cardinality_;
 
   // TODO(student) - can add more data structures as required
+  int16_t b_;
+  bool flag_;
+  std::mutex mtx_;
 };
 
 }  // namespace bustub

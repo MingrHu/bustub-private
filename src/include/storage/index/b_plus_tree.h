@@ -1,3 +1,15 @@
+//===----------------------------------------------------------------------===//
+//
+//                         BusTub
+//
+// b_plus_tree.h
+//
+// Identification: src/include/storage/index/b_plus_tree.h
+//
+// Copyright (c) 2015-2025, Carnegie Mellon University Database Group
+//
+//===----------------------------------------------------------------------===//
+
 /**
  * b_plus_tree.h
  *
@@ -14,9 +26,11 @@
 #include <deque>
 #include <filesystem>
 #include <iostream>
+#include <mutex>
 #include <optional>
 #include <queue>
 #include <shared_mutex>
+#include <stack>
 #include <string>
 #include <vector>
 
@@ -26,6 +40,7 @@
 #include "storage/page/b_plus_tree_header_page.h"
 #include "storage/page/b_plus_tree_internal_page.h"
 #include "storage/page/b_plus_tree_leaf_page.h"
+#include "storage/page/b_plus_tree_page.h"
 #include "storage/page/page_guard.h"
 
 namespace bustub {
@@ -52,6 +67,8 @@ class Context {
 
   // You may want to use this when getting value, but not necessary.
   std::deque<ReadPageGuard> read_set_;
+
+  std::stack<page_id_t> indexs_store_;
 
   auto IsRootPage(page_id_t page_id) -> bool { return page_id == root_page_id_; }
 };
@@ -91,23 +108,10 @@ class BPlusTree {
 
   auto Begin(const KeyType &key) -> INDEXITERATOR_TYPE;
 
-  // Print the B+ tree
   void Print(BufferPoolManager *bpm);
 
-  // Draw the B+ tree
   void Draw(BufferPoolManager *bpm, const std::filesystem::path &outf);
 
-  /**
-   * @brief draw a B+ tree, below is a printed
-   * B+ tree(3 max leaf, 4 max internal) after inserting key:
-   *  {1, 5, 9, 13, 17, 21, 25, 29, 33, 37, 18, 19, 20}
-   *
-   *                               (25)
-   *                 (9,17,19)                          (33)
-   *  (1,5)    (9,13)    (17,18)    (19,20,21)    (25,29)    (33,37)
-   *
-   * @return std::string
-   */
   auto DrawBPlusTree() -> std::string;
 
   // read data from file and insert one by one
@@ -116,30 +120,47 @@ class BPlusTree {
   // read data from file and remove one by one
   void RemoveFromFile(const std::filesystem::path &file_name);
 
-  /**
-   * @brief Read batch operations from input file, below is a sample file format
-   * insert some keys and delete 8, 9 from the tree with one step.
-   * { i1 i2 i3 i4 i5 i6 i7 i8 i9 i10 i30 d8 d9 } //  batch.txt
-   * B+ Tree(4 max leaf, 4 max internal) after processing:
-   *                            (5)
-   *                 (3)                (7)
-   *            (1,2)    (3,4)    (5,6)    (7,10,30) //  The output tree example
-   */
   void BatchOpsFromFile(const std::filesystem::path &file_name);
 
  private:
-  /* Debug Routines for FREE!! */
   void ToGraph(page_id_t page_id, const BPlusTreePage *page, std::ofstream &out);
 
   void PrintTree(page_id_t page_id, const BPlusTreePage *page);
 
-  /**
-   * @brief Convert A B+ tree into a Printable B+ tree
-   *
-   * @param root_id
-   * @return PrintableNode
-   */
   auto ToPrintableBPlusTree(page_id_t root_id) -> PrintableBPlusTree;
+
+  // accroding key return the index
+  // 精确查询 内部节点返回最大小于等于 叶子节点返回找到或没找到
+  auto KeyBinarySearch(const KeyType &key, const BPlusTreePage *page, bool is_leaf) -> int;
+
+  // 返回第一个大于等于目标键的位置
+  auto LowerBound(const KeyType &key, const BPlusTreePage *target_page, bool is_leaf) -> int;
+
+  void InsertLeafPageNode(int insert_pos, const KeyType &key, const ValueType &val, LeafPage *leaf_page);
+
+  void InsertInnerPageNode(int insert_pos, const KeyType &key, const page_id_t &val, InternalPage *inner_page);
+
+  void InnerSplitPage(int split_pos, InternalPage *origional_page, InternalPage *new_page,
+                      std::vector<KeyType> &key_block, std::vector<page_id_t> &val_block);
+
+  void LeafSplitPage(int split_pos, LeafPage *origional_page, LeafPage *new_page, page_id_t right_pgid,
+                     std::vector<KeyType> &key_block, std::vector<ValueType> &val_block);
+
+  void DeleteSpeciKeyVal(int delete_pos, BPlusTreePage *op_page, bool is_leaf);
+
+  auto ParentIsSafe(const BPlusTreePage *cur_page, bool is_insert) -> bool;
+
+  void AdjustRoot(BPlusTreePage *old_root_page, Context &ctx);
+
+  auto BorrowSibLeft(BPlusTreePage *sib_page, BPlusTreePage *poor_page, bool is_leaf, const KeyType &key) -> KeyType;
+
+  auto BorrowSibRight(BPlusTreePage *sib_page, BPlusTreePage *poor_page, bool is_leaf, const KeyType &key) -> KeyType;
+
+  void MoveToLeft(BPlusTreePage *sib_page, BPlusTreePage *cur_page, bool is_leaf, KeyType &key);
+
+  auto Redistribute(InternalPage *parent, int child_index, bool is_leaf, BPlusTreePage *op_page) -> bool;
+
+  auto MergeNode(InternalPage *parent, int child_index, bool is_leaf, BPlusTreePage *op_page) -> page_id_t;
 
   // member variable
   std::string index_name_;

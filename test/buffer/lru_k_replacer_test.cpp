@@ -1,3 +1,15 @@
+//===----------------------------------------------------------------------===//
+//
+//                         BusTub
+//
+// lru_k_replacer_test.cpp
+//
+// Identification: test/buffer/lru_k_replacer_test.cpp
+//
+// Copyright (c) 2015-2025, Carnegie Mellon University Database Group
+//
+//===----------------------------------------------------------------------===//
+
 /**
  * lru_k_replacer_test.cpp
  */
@@ -16,7 +28,7 @@
 
 namespace bustub {
 
-TEST(LRUKReplacerTest, DISABLED_SampleTest) {
+TEST(LRUKReplacerTest, SampleTest) {
   // Note that comparison with `std::nullopt` always results in `false`, and if the optional type actually does contain
   // a value, the comparison will compare the inner value.
   // See: https://devblogs.microsoft.com/oldnewthing/20211004-00/?p=105754

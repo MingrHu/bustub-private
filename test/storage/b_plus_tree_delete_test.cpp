@@ -6,7 +6,7 @@
 //
 // Identification: test/storage/b_plus_tree_delete_test.cpp
 //
-// Copyright (c) 2015-2024, Carnegie Mellon University Database Group
+// Copyright (c) 2015-2025, Carnegie Mellon University Database Group
 //
 //===----------------------------------------------------------------------===//
 
@@ -24,7 +24,7 @@ namespace bustub {
 
 using bustub::DiskManagerUnlimitedMemory;
 
-TEST(BPlusTreeTests, DISABLED_DeleteTestNoIterator) {
+TEST(BPlusTreeTests, DeleteTestNoIterator) {
   // create KeyComparator and index schema
   auto key_schema = ParseCreateStatement("a bigint");
   GenericComparator<8> comparator(key_schema.get());
@@ -56,7 +56,7 @@ TEST(BPlusTreeTests, DISABLED_DeleteTestNoIterator) {
     int64_t value = key & 0xFFFFFFFF;
     EXPECT_EQ(rids[0].GetSlotNum(), value);
   }
-
+  tree.Draw(bpm, "/Users/hmr/Desktop/bustub-private/b_plus_tree_graph/b_plus_delete_tree.dot");
   std::vector<int64_t> remove_keys = {1, 5, 3, 4};
   for (auto key : remove_keys) {
     index_key.SetFromInteger(key);
@@ -91,7 +91,7 @@ TEST(BPlusTreeTests, DISABLED_DeleteTestNoIterator) {
   delete bpm;
 }
 
-TEST(BPlusTreeTests, DISABLED_SequentialEdgeMixTest) {  // NOLINT
+TEST(BPlusTreeTests, SequentialEdgeMixTest) {  // NOLINT
   // create KeyComparator and index schema
   auto key_schema = ParseCreateStatement("a bigint");
   GenericComparator<8> comparator(key_schema.get());

@@ -2,11 +2,11 @@
 //
 //                         BusTub
 //
-// disk_manager_test.cpp
+// disk_scheduler_test.cpp
 //
-// Identification: test/storage/disk/disk_scheduler_test.cpp
+// Identification: test/storage/disk_scheduler_test.cpp
 //
-// Copyright (c) 2015-2023, Carnegie Mellon University Database Group
+// Copyright (c) 2015-2025, Carnegie Mellon University Database Group
 //
 //===----------------------------------------------------------------------===//
 
@@ -24,7 +24,7 @@ namespace bustub {
 using bustub::DiskManagerUnlimitedMemory;
 
 // NOLINTNEXTLINE
-TEST(DiskSchedulerTest, DISABLED_ScheduleWriteReadPageTest) {
+TEST(DiskSchedulerTest, ScheduleWriteReadPageTest) {
   char buf[BUSTUB_PAGE_SIZE] = {0};
   char data[BUSTUB_PAGE_SIZE] = {0};
 
