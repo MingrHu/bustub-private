@@ -246,6 +246,13 @@ TEST(format_impl_test, format_error_code) {
   }
 }
 
+TEST(format_impl_test, compute_width) {
+  EXPECT_EQ(4,
+            fmt::detail::compute_width(
+                fmt::basic_string_view<fmt::detail::char8_type>(
+                    reinterpret_cast<const fmt::detail::char8_type*>("ёжик"))));
+}
+
 // Tests fmt::detail::count_digits for integer type Int.
 template <typename Int> void test_count_digits() {
   for (Int i = 0; i < 10; ++i) EXPECT_EQ(1u, fmt::detail::count_digits(i));
@@ -283,7 +290,7 @@ struct double_double {
   double a;
   double b;
 
-  constexpr explicit double_double(double a_val = 0, double b_val = 0)
+  explicit constexpr double_double(double a_val = 0, double b_val = 0)
       : a(a_val), b(b_val) {}
 
   operator double() const { return a + b; }
@@ -299,7 +306,7 @@ bool operator>=(const double_double& lhs, const double_double& rhs) {
 struct slow_float {
   float value;
 
-  constexpr explicit slow_float(float val = 0) : value(val) {}
+  explicit constexpr slow_float(float val = 0) : value(val) {}
   operator float() const { return value; }
   auto operator-() const -> slow_float { return slow_float(-value); }
 };
@@ -344,7 +351,7 @@ TEST(format_impl_test, write_dragon_even) {
   if (!FMT_MSC_VERSION) EXPECT_EQ(s, "33554450");
 }
 
-#if defined(_WIN32) && !defined(FMT_USE_WRITE_CONSOLE)
+#ifdef _WIN32
 #  include <windows.h>
 
 TEST(format_impl_test, write_console_signature) {

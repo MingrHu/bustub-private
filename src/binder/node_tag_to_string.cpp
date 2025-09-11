@@ -1,16 +1,4 @@
 //===----------------------------------------------------------------------===//
-//
-//                         BusTub
-//
-// node_tag_to_string.cpp
-//
-// Identification: src/binder/node_tag_to_string.cpp
-//
-// Copyright (c) 2015-2025, Carnegie Mellon University Database Group
-//
-//===----------------------------------------------------------------------===//
-
-//===----------------------------------------------------------------------===//
 // Copyright 2018-2022 Stichting DuckDB Foundation
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -37,7 +25,6 @@
 
 namespace bustub {
 
-/** Get the std::string representation of a Postgres node tag. */
 auto Binder::NodeTagToString(duckdb_libpgquery::PGNodeTag type) -> std::string {
   switch (type) {
     case duckdb_libpgquery::T_PGInvalid:

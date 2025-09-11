@@ -6,7 +6,7 @@
 //
 // Identification: src/include/execution/executors/aggregation_executor.h
 //
-// Copyright (c) 2015-2025, Carnegie Mellon University Database Group
+// Copyright (c) 2015-2021, Carnegie Mellon University Database Group
 //
 //===----------------------------------------------------------------------===//
 
@@ -17,7 +17,8 @@
 #include <utility>
 #include <vector>
 
-#include "common/macros.h"
+#include "common/util/hash_util.h"
+#include "container/hash/hash_function.h"
 #include "execution/executor_context.h"
 #include "execution/executors/abstract_executor.h"
 #include "execution/expressions/abstract_expression.h"
@@ -63,6 +64,8 @@ class SimpleAggregationHashTable {
   }
 
   /**
+   * TODO(Student)
+   *
    * Combines the input into the aggregation result.
    * @param[out] result The output aggregate value
    * @param input The input value
@@ -78,8 +81,6 @@ class SimpleAggregationHashTable {
           break;
       }
     }
-
-    UNIMPLEMENTED("TODO(P3): Add implementation.");
   }
 
   /**
@@ -149,16 +150,30 @@ class SimpleAggregationHashTable {
  */
 class AggregationExecutor : public AbstractExecutor {
  public:
+  /**
+   * Construct a new AggregationExecutor instance.
+   * @param exec_ctx The executor context
+   * @param plan The insert plan to be executed
+   * @param child_executor The child executor from which inserted tuples are pulled (may be `nullptr`)
+   */
   AggregationExecutor(ExecutorContext *exec_ctx, const AggregationPlanNode *plan,
                       std::unique_ptr<AbstractExecutor> &&child_executor);
 
+  /** Initialize the aggregation */
   void Init() override;
 
+  /**
+   * Yield the next tuple from the insert.
+   * @param[out] tuple The next tuple produced by the aggregation
+   * @param[out] rid The next tuple RID produced by the aggregation
+   * @return `true` if a tuple was produced, `false` if there are no more tuples
+   */
   auto Next(Tuple *tuple, RID *rid) -> bool override;
 
   /** @return The output schema for the aggregation */
   auto GetOutputSchema() const -> const Schema & override { return plan_->OutputSchema(); };
 
+  /** Do not use or remove this function, otherwise you will get zero points. */
   auto GetChildExecutor() const -> const AbstractExecutor *;
 
  private:

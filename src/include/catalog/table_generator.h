@@ -1,15 +1,3 @@
-//===----------------------------------------------------------------------===//
-//
-//                         BusTub
-//
-// table_generator.h
-//
-// Identification: src/include/catalog/table_generator.h
-//
-// Copyright (c) 2015-2025, Carnegie Mellon University Database Group
-//
-//===----------------------------------------------------------------------===//
-
 #pragma once
 
 #include <memory>
@@ -39,6 +27,9 @@ class TableGenerator {
    */
   explicit TableGenerator(ExecutorContext *exec_ctx) : exec_ctx_{exec_ctx} {}
 
+  /**
+   * Generate test tables.
+   */
   void GenerateTestTables();
 
  private:

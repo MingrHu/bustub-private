@@ -1,15 +1,3 @@
-//===----------------------------------------------------------------------===//
-//
-//                         BusTub
-//
-// terrier.cpp
-//
-// Identification: tools/terrier_bench/terrier.cpp
-//
-// Copyright (c) 2015-2025, Carnegie Mellon University Database Group
-//
-//===----------------------------------------------------------------------===//
-
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -481,7 +469,6 @@ void PrintPlan(bustub::BusTubInstance &instance, const std::string &query, bool 
         std::terminate();
       }
     }
-    instance.txn_manager_->Commit(txn);
   }
 }
 

@@ -1,12 +1,8 @@
 //===----------------------------------------------------------------------===//
-//
 //                         BusTub
 //
-// simplified_token.h
+// bustub/binder/simplified_token.h
 //
-// Identification: src/include/binder/simplified_token.h
-//
-// Copyright (c) 2015-2025, Carnegie Mellon University Database Group
 //
 //===----------------------------------------------------------------------===//
 

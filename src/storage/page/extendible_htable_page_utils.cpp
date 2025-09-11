@@ -6,7 +6,7 @@
 //
 // Identification: src/storage/page/extendible_htable_page_utils.cpp
 //
-// Copyright (c) 2015-2025, Carnegie Mellon University Database Group
+// Copyright (c) 2015-2023, Carnegie Mellon University Database Group
 //
 //===----------------------------------------------------------------------===//
 
@@ -18,9 +18,6 @@
 
 namespace bustub {
 
-/**
- * Prints the header's occupancy information
- */
 void ExtendibleHTableHeaderPage::PrintHeader() const {
   LOG_DEBUG("======== HEADER (max_depth_: %u) ========", max_depth_);
   LOG_DEBUG("| directory_idx | page_id |");
@@ -30,9 +27,6 @@ void ExtendibleHTableHeaderPage::PrintHeader() const {
   LOG_DEBUG("======== END HEADER ========");
 }
 
-/**
- * Prints the current directory
- */
 void ExtendibleHTableDirectoryPage::PrintDirectory() const {
   LOG_DEBUG("======== DIRECTORY (global_depth_: %u) ========", global_depth_);
   LOG_DEBUG("| bucket_idx | page_id | local_depth |");
@@ -42,9 +36,6 @@ void ExtendibleHTableDirectoryPage::PrintDirectory() const {
   LOG_DEBUG("================ END DIRECTORY ================");
 }
 
-/**
- * Prints the bucket's occupancy information
- */
 template <typename K, typename V, typename KC>
 void ExtendibleHTableBucketPage<K, V, KC>::PrintBucket() const {
   std::cout << "======== BUCKET (size_: " << size_ << " | max_size_: " << max_size_ << ") ========\n";

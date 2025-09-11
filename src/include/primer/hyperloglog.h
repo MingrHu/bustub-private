@@ -1,15 +1,3 @@
-//===----------------------------------------------------------------------===//
-//
-//                         BusTub
-//
-// hyperloglog.h
-//
-// Identification: src/include/primer/hyperloglog.h
-//
-// Copyright (c) 2015-2025, Carnegie Mellon University Database Group
-//
-//===----------------------------------------------------------------------===//
-
 #pragma once
 
 #include <bitset>
@@ -18,6 +6,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "common/util/hash_util.h"
 
 /** @brief Capacity of the bitset stream. */
@@ -34,6 +23,7 @@ class HyperLogLog {
   /** @brief Disable default constructor. */
   HyperLogLog() = delete;
 
+  /** @brief Parameterized constructor. */
   explicit HyperLogLog(int16_t n_bits);
 
   /**
@@ -43,8 +33,16 @@ class HyperLogLog {
    */
   auto GetCardinality() { return cardinality_; }
 
+  /**
+   * @brief Adds a value into the HyperLogLog.
+   *
+   * @param[in] val - value that's added into hyperloglog
+   */
   auto AddElem(KeyType val) -> void;
 
+  /**
+   * @brief Function that computes cardinality.
+   */
   auto ComputeCardinality() -> void;
 
  private:
@@ -64,21 +62,27 @@ class HyperLogLog {
     return bustub::HashUtil::HashValue(&val_obj);
   }
 
+  /**
+   * @brief Function that computes binary.
+   *
+   *
+   * @param[in] hash
+   * @returns binary of a given hash
+   */
   auto ComputeBinary(const hash_t &hash) const -> std::bitset<BITSET_CAPACITY>;
 
+  /**
+   * @brief Function that computes leading zeros.
+   *
+   * @param[in] bset - binary values of a given bitset
+   * @returns leading zeros of given binary set
+   */
   auto PositionOfLeftmostOne(const std::bitset<BITSET_CAPACITY> &bset) const -> uint64_t;
 
   /** @brief Cardinality value. */
   size_t cardinality_;
 
   /** @todo (student) can add their data structures that support HyperLogLog */
-  size_t b_;
-
-  std::vector<double> regist_;
-
-  std::mutex mtx_;
-
-  bool flag_;
 };
 
 }  // namespace bustub
