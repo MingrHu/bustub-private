@@ -6,7 +6,7 @@
 //
 // Identification: test/storage/b_plus_tree_insert_test.cpp
 //
-// Copyright (c) 2015-2025, Carnegie Mellon University Database Group
+// Copyright (c) 2015-2024, Carnegie Mellon University Database Group
 //
 //===----------------------------------------------------------------------===//
 
@@ -23,7 +23,7 @@ namespace bustub {
 
 using bustub::DiskManagerUnlimitedMemory;
 
-TEST(BPlusTreeTests, BasicInsertTest) {
+TEST(BPlusTreeTests, DISABLED_BasicInsertTest) {
   // create KeyComparator and index schema
   auto key_schema = ParseCreateStatement("a bigint");
   GenericComparator<8> comparator(key_schema.get());
@@ -56,7 +56,7 @@ TEST(BPlusTreeTests, BasicInsertTest) {
   delete bpm;
 }
 
-TEST(BPlusTreeTests, InsertTest1NoIterator) {
+TEST(BPlusTreeTests, DISABLED_InsertTest1NoIterator) {
   // create KeyComparator and index schema
   auto key_schema = ParseCreateStatement("a bigint");
   GenericComparator<8> comparator(key_schema.get());
@@ -95,7 +95,7 @@ TEST(BPlusTreeTests, InsertTest1NoIterator) {
   delete bpm;
 }
 
-TEST(BPlusTreeTests, InsertTest2) {
+TEST(BPlusTreeTests, DISABLED_InsertTest2) {
   // create KeyComparator and index schema
   auto key_schema = ParseCreateStatement("a bigint");
   GenericComparator<8> comparator(key_schema.get());

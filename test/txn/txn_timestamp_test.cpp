@@ -1,15 +1,3 @@
-//===----------------------------------------------------------------------===//
-//
-//                         BusTub
-//
-// txn_timestamp_test.cpp
-//
-// Identification: test/txn/txn_timestamp_test.cpp
-//
-// Copyright (c) 2015-2025, Carnegie Mellon University Database Group
-//
-//===----------------------------------------------------------------------===//
-
 #include <chrono>  // NOLINT
 #include <cstdio>
 #include <exception>
