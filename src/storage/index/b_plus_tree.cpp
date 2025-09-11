@@ -18,6 +18,7 @@
 #include "common/config.h"
 #include "common/macros.h"
 #include "storage/index/b_plus_tree_debug.h"
+#include "storage/index/index_iterator.h"
 #include "storage/page/b_plus_tree_header_page.h"
 #include "storage/page/b_plus_tree_page.h"
 #include "storage/page/page_guard.h"
@@ -71,14 +72,14 @@ auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
   // 保存目标节点的页面
   Context ctx;
 
-  ctx.header_page_ = bpm_->WritePage(header_page_id_);
-  auto root_pgid = ctx.header_page_->template As<BPlusTreeHeaderPage>()->root_page_id_;
+  auto header_page_guard = bpm_->ReadPage(header_page_id_);
+  auto root_pgid = header_page_guard.template As<BPlusTreeHeaderPage>()->root_page_id_;
   if (root_pgid == INVALID_PAGE_ID) {
     return false;
   }
   // 先拿到根节点
   ctx.read_set_.push_back(bpm_->ReadPage(root_pgid));
-  ctx.header_page_ = std::nullopt;
+  header_page_guard.Drop();
 
   int index = -1;
 
@@ -152,8 +153,8 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value) -> bool 
   Context ctx;
   // 乐观锁策略 一路读锁
   // 为了避免锁升级的问题 read_set_必须持有两个节点
-  ctx.header_page_ = bpm_->WritePage(header_page_id_);
-  ctx.root_page_id_ = ctx.header_page_->template As<BPlusTreeHeaderPage>()->root_page_id_;
+  auto h_page_guard = bpm_->ReadPage(header_page_id_);
+  ctx.root_page_id_ = h_page_guard.template As<BPlusTreeHeaderPage>()->root_page_id_;
   ctx.read_set_.emplace_back(bpm_->ReadPage(ctx.root_page_id_));
   auto leaf_pgid = ctx.root_page_id_;
 
@@ -598,11 +599,7 @@ auto BPLUSTREE_TYPE::Begin(const KeyType &key) -> INDEXITERATOR_TYPE {
  */
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::End() -> INDEXITERATOR_TYPE {
-  INDEXITERATOR_TYPE res = Begin();
-  while (!res.IsEnd()) {
-    ++res;
-  }
-  return res;
+  return INDEXITERATOR_TYPE(bpm_, INVALID_PAGE_ID, -1, IndexPageType::INVALID_INDEX_PAGE);
 }
 
 /**
