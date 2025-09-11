@@ -1,0 +1,1182 @@
+digraph G {
+INT_81[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=81</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p27"> </TD>
+<TD PORT="p80">28</TD>
+<TD PORT="p121">55</TD>
+</TR></TABLE>>];
+INT_27[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=27</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p9"> </TD>
+<TD PORT="p26">10</TD>
+<TD PORT="p40">19</TD>
+</TR></TABLE>>];
+INT_9[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=9</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p3"> </TD>
+<TD PORT="p8">4</TD>
+<TD PORT="p13">7</TD>
+</TR></TABLE>>];
+INT_3[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=3</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p1"> </TD>
+<TD PORT="p2">2</TD>
+<TD PORT="p4">3</TD>
+</TR></TABLE>>];
+LEAF_1[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=1</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>1</TD>
+</TR></TABLE>>];
+LEAF_1 -> LEAF_2;
+{rank=same LEAF_1 LEAF_2};
+INT_3:p1 -> LEAF_1;
+LEAF_2[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=2</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>2</TD>
+</TR></TABLE>>];
+LEAF_2 -> LEAF_4;
+{rank=same LEAF_2 LEAF_4};
+INT_3:p2 -> LEAF_2;
+LEAF_4[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=4</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>3</TD>
+</TR></TABLE>>];
+LEAF_4 -> LEAF_5;
+{rank=same LEAF_4 LEAF_5};
+INT_3:p4 -> LEAF_4;
+INT_9:p3 -> INT_3;
+INT_8[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=8</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p5"> </TD>
+<TD PORT="p6">5</TD>
+<TD PORT="p7">6</TD>
+</TR></TABLE>>];
+LEAF_5[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=5</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>4</TD>
+</TR></TABLE>>];
+LEAF_5 -> LEAF_6;
+{rank=same LEAF_5 LEAF_6};
+INT_8:p5 -> LEAF_5;
+LEAF_6[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=6</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>5</TD>
+</TR></TABLE>>];
+LEAF_6 -> LEAF_7;
+{rank=same LEAF_6 LEAF_7};
+INT_8:p6 -> LEAF_6;
+LEAF_7[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=7</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>6</TD>
+</TR></TABLE>>];
+LEAF_7 -> LEAF_10;
+{rank=same LEAF_7 LEAF_10};
+INT_8:p7 -> LEAF_7;
+{rank=same INT_3 INT_8};
+INT_9:p8 -> INT_8;
+INT_13[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=13</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p10"> </TD>
+<TD PORT="p11">8</TD>
+<TD PORT="p12">9</TD>
+</TR></TABLE>>];
+LEAF_10[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=10</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>7</TD>
+</TR></TABLE>>];
+LEAF_10 -> LEAF_11;
+{rank=same LEAF_10 LEAF_11};
+INT_13:p10 -> LEAF_10;
+LEAF_11[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=11</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>8</TD>
+</TR></TABLE>>];
+LEAF_11 -> LEAF_12;
+{rank=same LEAF_11 LEAF_12};
+INT_13:p11 -> LEAF_11;
+LEAF_12[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=12</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>9</TD>
+</TR></TABLE>>];
+LEAF_12 -> LEAF_14;
+{rank=same LEAF_12 LEAF_14};
+INT_13:p12 -> LEAF_12;
+{rank=same INT_8 INT_13};
+INT_9:p13 -> INT_13;
+INT_27:p9 -> INT_9;
+INT_26[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=26</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p17"> </TD>
+<TD PORT="p21">13</TD>
+<TD PORT="p25">16</TD>
+</TR></TABLE>>];
+INT_17[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=17</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p14"> </TD>
+<TD PORT="p15">11</TD>
+<TD PORT="p16">12</TD>
+</TR></TABLE>>];
+LEAF_14[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=14</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>10</TD>
+</TR></TABLE>>];
+LEAF_14 -> LEAF_15;
+{rank=same LEAF_14 LEAF_15};
+INT_17:p14 -> LEAF_14;
+LEAF_15[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=15</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>11</TD>
+</TR></TABLE>>];
+LEAF_15 -> LEAF_16;
+{rank=same LEAF_15 LEAF_16};
+INT_17:p15 -> LEAF_15;
+LEAF_16[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=16</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>12</TD>
+</TR></TABLE>>];
+LEAF_16 -> LEAF_18;
+{rank=same LEAF_16 LEAF_18};
+INT_17:p16 -> LEAF_16;
+INT_26:p17 -> INT_17;
+INT_21[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=21</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p18"> </TD>
+<TD PORT="p19">14</TD>
+<TD PORT="p20">15</TD>
+</TR></TABLE>>];
+LEAF_18[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=18</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>13</TD>
+</TR></TABLE>>];
+LEAF_18 -> LEAF_19;
+{rank=same LEAF_18 LEAF_19};
+INT_21:p18 -> LEAF_18;
+LEAF_19[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=19</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>14</TD>
+</TR></TABLE>>];
+LEAF_19 -> LEAF_20;
+{rank=same LEAF_19 LEAF_20};
+INT_21:p19 -> LEAF_19;
+LEAF_20[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=20</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>15</TD>
+</TR></TABLE>>];
+LEAF_20 -> LEAF_22;
+{rank=same LEAF_20 LEAF_22};
+INT_21:p20 -> LEAF_20;
+{rank=same INT_17 INT_21};
+INT_26:p21 -> INT_21;
+INT_25[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=25</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p22"> </TD>
+<TD PORT="p23">17</TD>
+<TD PORT="p24">18</TD>
+</TR></TABLE>>];
+LEAF_22[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=22</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>16</TD>
+</TR></TABLE>>];
+LEAF_22 -> LEAF_23;
+{rank=same LEAF_22 LEAF_23};
+INT_25:p22 -> LEAF_22;
+LEAF_23[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=23</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>17</TD>
+</TR></TABLE>>];
+LEAF_23 -> LEAF_24;
+{rank=same LEAF_23 LEAF_24};
+INT_25:p23 -> LEAF_23;
+LEAF_24[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=24</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>18</TD>
+</TR></TABLE>>];
+LEAF_24 -> LEAF_28;
+{rank=same LEAF_24 LEAF_28};
+INT_25:p24 -> LEAF_24;
+{rank=same INT_21 INT_25};
+INT_26:p25 -> INT_25;
+{rank=same INT_9 INT_26};
+INT_27:p26 -> INT_26;
+INT_40[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=40</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p31"> </TD>
+<TD PORT="p35">22</TD>
+<TD PORT="p39">25</TD>
+</TR></TABLE>>];
+INT_31[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=31</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p28"> </TD>
+<TD PORT="p29">20</TD>
+<TD PORT="p30">21</TD>
+</TR></TABLE>>];
+LEAF_28[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=28</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>19</TD>
+</TR></TABLE>>];
+LEAF_28 -> LEAF_29;
+{rank=same LEAF_28 LEAF_29};
+INT_31:p28 -> LEAF_28;
+LEAF_29[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=29</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>20</TD>
+</TR></TABLE>>];
+LEAF_29 -> LEAF_30;
+{rank=same LEAF_29 LEAF_30};
+INT_31:p29 -> LEAF_29;
+LEAF_30[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=30</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>21</TD>
+</TR></TABLE>>];
+LEAF_30 -> LEAF_32;
+{rank=same LEAF_30 LEAF_32};
+INT_31:p30 -> LEAF_30;
+INT_40:p31 -> INT_31;
+INT_35[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=35</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p32"> </TD>
+<TD PORT="p33">23</TD>
+<TD PORT="p34">24</TD>
+</TR></TABLE>>];
+LEAF_32[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=32</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>22</TD>
+</TR></TABLE>>];
+LEAF_32 -> LEAF_33;
+{rank=same LEAF_32 LEAF_33};
+INT_35:p32 -> LEAF_32;
+LEAF_33[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=33</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>23</TD>
+</TR></TABLE>>];
+LEAF_33 -> LEAF_34;
+{rank=same LEAF_33 LEAF_34};
+INT_35:p33 -> LEAF_33;
+LEAF_34[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=34</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>24</TD>
+</TR></TABLE>>];
+LEAF_34 -> LEAF_36;
+{rank=same LEAF_34 LEAF_36};
+INT_35:p34 -> LEAF_34;
+{rank=same INT_31 INT_35};
+INT_40:p35 -> INT_35;
+INT_39[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=39</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p36"> </TD>
+<TD PORT="p37">26</TD>
+<TD PORT="p38">27</TD>
+</TR></TABLE>>];
+LEAF_36[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=36</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>25</TD>
+</TR></TABLE>>];
+LEAF_36 -> LEAF_37;
+{rank=same LEAF_36 LEAF_37};
+INT_39:p36 -> LEAF_36;
+LEAF_37[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=37</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>26</TD>
+</TR></TABLE>>];
+LEAF_37 -> LEAF_38;
+{rank=same LEAF_37 LEAF_38};
+INT_39:p37 -> LEAF_37;
+LEAF_38[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=38</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>27</TD>
+</TR></TABLE>>];
+LEAF_38 -> LEAF_41;
+{rank=same LEAF_38 LEAF_41};
+INT_39:p38 -> LEAF_38;
+{rank=same INT_35 INT_39};
+INT_40:p39 -> INT_39;
+{rank=same INT_26 INT_40};
+INT_27:p40 -> INT_40;
+INT_81:p27 -> INT_27;
+INT_80[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=80</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p53"> </TD>
+<TD PORT="p66">37</TD>
+<TD PORT="p79">46</TD>
+</TR></TABLE>>];
+INT_53[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=53</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p44"> </TD>
+<TD PORT="p48">31</TD>
+<TD PORT="p52">34</TD>
+</TR></TABLE>>];
+INT_44[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=44</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p41"> </TD>
+<TD PORT="p42">29</TD>
+<TD PORT="p43">30</TD>
+</TR></TABLE>>];
+LEAF_41[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=41</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>28</TD>
+</TR></TABLE>>];
+LEAF_41 -> LEAF_42;
+{rank=same LEAF_41 LEAF_42};
+INT_44:p41 -> LEAF_41;
+LEAF_42[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=42</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>29</TD>
+</TR></TABLE>>];
+LEAF_42 -> LEAF_43;
+{rank=same LEAF_42 LEAF_43};
+INT_44:p42 -> LEAF_42;
+LEAF_43[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=43</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>30</TD>
+</TR></TABLE>>];
+LEAF_43 -> LEAF_45;
+{rank=same LEAF_43 LEAF_45};
+INT_44:p43 -> LEAF_43;
+INT_53:p44 -> INT_44;
+INT_48[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=48</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p45"> </TD>
+<TD PORT="p46">32</TD>
+<TD PORT="p47">33</TD>
+</TR></TABLE>>];
+LEAF_45[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=45</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>31</TD>
+</TR></TABLE>>];
+LEAF_45 -> LEAF_46;
+{rank=same LEAF_45 LEAF_46};
+INT_48:p45 -> LEAF_45;
+LEAF_46[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="2">P=46</TD></TR>
+<TR><TD COLSPAN="2">max_size=3,min_size=1,size=2</TD></TR>
+<TR><TD>32</TD>
+<TD>34</TD>
+</TR></TABLE>>];
+LEAF_46 -> LEAF_47;
+{rank=same LEAF_46 LEAF_47};
+INT_48:p46 -> LEAF_46;
+LEAF_47[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=47</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>33</TD>
+</TR></TABLE>>];
+LEAF_47 -> LEAF_49;
+{rank=same LEAF_47 LEAF_49};
+INT_48:p47 -> LEAF_47;
+{rank=same INT_44 INT_48};
+INT_53:p48 -> INT_48;
+INT_52[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=52</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p49"> </TD>
+<TD PORT="p50">35</TD>
+<TD PORT="p51">36</TD>
+</TR></TABLE>>];
+LEAF_49[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=49</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>34</TD>
+</TR></TABLE>>];
+LEAF_49 -> LEAF_50;
+{rank=same LEAF_49 LEAF_50};
+INT_52:p49 -> LEAF_49;
+LEAF_50[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=50</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>35</TD>
+</TR></TABLE>>];
+LEAF_50 -> LEAF_51;
+{rank=same LEAF_50 LEAF_51};
+INT_52:p50 -> LEAF_50;
+LEAF_51[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=51</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>36</TD>
+</TR></TABLE>>];
+LEAF_51 -> LEAF_54;
+{rank=same LEAF_51 LEAF_54};
+INT_52:p51 -> LEAF_51;
+{rank=same INT_48 INT_52};
+INT_53:p52 -> INT_52;
+INT_80:p53 -> INT_53;
+INT_66[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=66</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p57"> </TD>
+<TD PORT="p61">40</TD>
+<TD PORT="p65">43</TD>
+</TR></TABLE>>];
+INT_57[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=57</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p54"> </TD>
+<TD PORT="p55">38</TD>
+<TD PORT="p56">39</TD>
+</TR></TABLE>>];
+LEAF_54[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=54</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>37</TD>
+</TR></TABLE>>];
+LEAF_54 -> LEAF_55;
+{rank=same LEAF_54 LEAF_55};
+INT_57:p54 -> LEAF_54;
+LEAF_55[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=55</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>38</TD>
+</TR></TABLE>>];
+LEAF_55 -> LEAF_56;
+{rank=same LEAF_55 LEAF_56};
+INT_57:p55 -> LEAF_55;
+LEAF_56[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=56</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>39</TD>
+</TR></TABLE>>];
+LEAF_56 -> LEAF_58;
+{rank=same LEAF_56 LEAF_58};
+INT_57:p56 -> LEAF_56;
+INT_66:p57 -> INT_57;
+INT_61[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=61</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p58"> </TD>
+<TD PORT="p59">41</TD>
+<TD PORT="p60">42</TD>
+</TR></TABLE>>];
+LEAF_58[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=58</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>40</TD>
+</TR></TABLE>>];
+LEAF_58 -> LEAF_59;
+{rank=same LEAF_58 LEAF_59};
+INT_61:p58 -> LEAF_58;
+LEAF_59[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=59</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>41</TD>
+</TR></TABLE>>];
+LEAF_59 -> LEAF_60;
+{rank=same LEAF_59 LEAF_60};
+INT_61:p59 -> LEAF_59;
+LEAF_60[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=60</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>42</TD>
+</TR></TABLE>>];
+LEAF_60 -> LEAF_62;
+{rank=same LEAF_60 LEAF_62};
+INT_61:p60 -> LEAF_60;
+{rank=same INT_57 INT_61};
+INT_66:p61 -> INT_61;
+INT_65[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=65</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p62"> </TD>
+<TD PORT="p63">44</TD>
+<TD PORT="p64">45</TD>
+</TR></TABLE>>];
+LEAF_62[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=62</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>43</TD>
+</TR></TABLE>>];
+LEAF_62 -> LEAF_63;
+{rank=same LEAF_62 LEAF_63};
+INT_65:p62 -> LEAF_62;
+LEAF_63[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=63</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>44</TD>
+</TR></TABLE>>];
+LEAF_63 -> LEAF_64;
+{rank=same LEAF_63 LEAF_64};
+INT_65:p63 -> LEAF_63;
+LEAF_64[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=64</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>45</TD>
+</TR></TABLE>>];
+LEAF_64 -> LEAF_67;
+{rank=same LEAF_64 LEAF_67};
+INT_65:p64 -> LEAF_64;
+{rank=same INT_61 INT_65};
+INT_66:p65 -> INT_65;
+{rank=same INT_53 INT_66};
+INT_80:p66 -> INT_66;
+INT_79[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=79</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p70"> </TD>
+<TD PORT="p74">49</TD>
+<TD PORT="p78">52</TD>
+</TR></TABLE>>];
+INT_70[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=70</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p67"> </TD>
+<TD PORT="p68">47</TD>
+<TD PORT="p69">48</TD>
+</TR></TABLE>>];
+LEAF_67[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=67</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>46</TD>
+</TR></TABLE>>];
+LEAF_67 -> LEAF_68;
+{rank=same LEAF_67 LEAF_68};
+INT_70:p67 -> LEAF_67;
+LEAF_68[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=68</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>47</TD>
+</TR></TABLE>>];
+LEAF_68 -> LEAF_69;
+{rank=same LEAF_68 LEAF_69};
+INT_70:p68 -> LEAF_68;
+LEAF_69[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=69</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>48</TD>
+</TR></TABLE>>];
+LEAF_69 -> LEAF_71;
+{rank=same LEAF_69 LEAF_71};
+INT_70:p69 -> LEAF_69;
+INT_79:p70 -> INT_70;
+INT_74[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=74</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p71"> </TD>
+<TD PORT="p72">50</TD>
+<TD PORT="p73">51</TD>
+</TR></TABLE>>];
+LEAF_71[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=71</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>49</TD>
+</TR></TABLE>>];
+LEAF_71 -> LEAF_72;
+{rank=same LEAF_71 LEAF_72};
+INT_74:p71 -> LEAF_71;
+LEAF_72[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=72</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>50</TD>
+</TR></TABLE>>];
+LEAF_72 -> LEAF_73;
+{rank=same LEAF_72 LEAF_73};
+INT_74:p72 -> LEAF_72;
+LEAF_73[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=73</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>51</TD>
+</TR></TABLE>>];
+LEAF_73 -> LEAF_75;
+{rank=same LEAF_73 LEAF_75};
+INT_74:p73 -> LEAF_73;
+{rank=same INT_70 INT_74};
+INT_79:p74 -> INT_74;
+INT_78[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=78</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p75"> </TD>
+<TD PORT="p76">53</TD>
+<TD PORT="p77">54</TD>
+</TR></TABLE>>];
+LEAF_75[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=75</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>52</TD>
+</TR></TABLE>>];
+LEAF_75 -> LEAF_76;
+{rank=same LEAF_75 LEAF_76};
+INT_78:p75 -> LEAF_75;
+LEAF_76[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=76</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>53</TD>
+</TR></TABLE>>];
+LEAF_76 -> LEAF_77;
+{rank=same LEAF_76 LEAF_77};
+INT_78:p76 -> LEAF_76;
+LEAF_77[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=77</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>54</TD>
+</TR></TABLE>>];
+LEAF_77 -> LEAF_82;
+{rank=same LEAF_77 LEAF_82};
+INT_78:p77 -> LEAF_77;
+{rank=same INT_74 INT_78};
+INT_79:p78 -> INT_78;
+{rank=same INT_66 INT_79};
+INT_80:p79 -> INT_79;
+{rank=same INT_27 INT_80};
+INT_81:p80 -> INT_80;
+INT_121[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="4">P=121</TD></TR>
+<TR><TD COLSPAN="4">max_size=5,min_size=2,size=4</TD></TR>
+<TR><TD PORT="p94"> </TD>
+<TD PORT="p107">64</TD>
+<TD PORT="p120">73</TD>
+<TD PORT="p134">82</TD>
+</TR></TABLE>>];
+INT_94[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=94</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p85"> </TD>
+<TD PORT="p89">58</TD>
+<TD PORT="p93">61</TD>
+</TR></TABLE>>];
+INT_85[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=85</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p82"> </TD>
+<TD PORT="p83">56</TD>
+<TD PORT="p84">57</TD>
+</TR></TABLE>>];
+LEAF_82[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=82</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>55</TD>
+</TR></TABLE>>];
+LEAF_82 -> LEAF_83;
+{rank=same LEAF_82 LEAF_83};
+INT_85:p82 -> LEAF_82;
+LEAF_83[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=83</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>56</TD>
+</TR></TABLE>>];
+LEAF_83 -> LEAF_84;
+{rank=same LEAF_83 LEAF_84};
+INT_85:p83 -> LEAF_83;
+LEAF_84[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=84</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>57</TD>
+</TR></TABLE>>];
+LEAF_84 -> LEAF_86;
+{rank=same LEAF_84 LEAF_86};
+INT_85:p84 -> LEAF_84;
+INT_94:p85 -> INT_85;
+INT_89[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=89</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p86"> </TD>
+<TD PORT="p87">59</TD>
+<TD PORT="p88">60</TD>
+</TR></TABLE>>];
+LEAF_86[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=86</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>58</TD>
+</TR></TABLE>>];
+LEAF_86 -> LEAF_87;
+{rank=same LEAF_86 LEAF_87};
+INT_89:p86 -> LEAF_86;
+LEAF_87[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=87</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>59</TD>
+</TR></TABLE>>];
+LEAF_87 -> LEAF_88;
+{rank=same LEAF_87 LEAF_88};
+INT_89:p87 -> LEAF_87;
+LEAF_88[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=88</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>60</TD>
+</TR></TABLE>>];
+LEAF_88 -> LEAF_90;
+{rank=same LEAF_88 LEAF_90};
+INT_89:p88 -> LEAF_88;
+{rank=same INT_85 INT_89};
+INT_94:p89 -> INT_89;
+INT_93[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=93</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p90"> </TD>
+<TD PORT="p91">62</TD>
+<TD PORT="p92">63</TD>
+</TR></TABLE>>];
+LEAF_90[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=90</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>61</TD>
+</TR></TABLE>>];
+LEAF_90 -> LEAF_91;
+{rank=same LEAF_90 LEAF_91};
+INT_93:p90 -> LEAF_90;
+LEAF_91[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="2">P=91</TD></TR>
+<TR><TD COLSPAN="2">max_size=3,min_size=1,size=2</TD></TR>
+<TR><TD>62</TD>
+<TD>65</TD>
+</TR></TABLE>>];
+LEAF_91 -> LEAF_92;
+{rank=same LEAF_91 LEAF_92};
+INT_93:p91 -> LEAF_91;
+LEAF_92[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=92</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>63</TD>
+</TR></TABLE>>];
+LEAF_92 -> LEAF_95;
+{rank=same LEAF_92 LEAF_95};
+INT_93:p92 -> LEAF_92;
+{rank=same INT_89 INT_93};
+INT_94:p93 -> INT_93;
+INT_121:p94 -> INT_94;
+INT_107[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=107</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p98"> </TD>
+<TD PORT="p102">67</TD>
+<TD PORT="p106">70</TD>
+</TR></TABLE>>];
+INT_98[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=98</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p95"> </TD>
+<TD PORT="p96">65</TD>
+<TD PORT="p97">66</TD>
+</TR></TABLE>>];
+LEAF_95[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=95</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>64</TD>
+</TR></TABLE>>];
+LEAF_95 -> LEAF_96;
+{rank=same LEAF_95 LEAF_96};
+INT_98:p95 -> LEAF_95;
+LEAF_96[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=96</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>65</TD>
+</TR></TABLE>>];
+LEAF_96 -> LEAF_97;
+{rank=same LEAF_96 LEAF_97};
+INT_98:p96 -> LEAF_96;
+LEAF_97[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=97</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>66</TD>
+</TR></TABLE>>];
+LEAF_97 -> LEAF_99;
+{rank=same LEAF_97 LEAF_99};
+INT_98:p97 -> LEAF_97;
+INT_107:p98 -> INT_98;
+INT_102[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=102</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p99"> </TD>
+<TD PORT="p100">68</TD>
+<TD PORT="p101">69</TD>
+</TR></TABLE>>];
+LEAF_99[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=99</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>67</TD>
+</TR></TABLE>>];
+LEAF_99 -> LEAF_100;
+{rank=same LEAF_99 LEAF_100};
+INT_102:p99 -> LEAF_99;
+LEAF_100[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=100</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>68</TD>
+</TR></TABLE>>];
+LEAF_100 -> LEAF_101;
+{rank=same LEAF_100 LEAF_101};
+INT_102:p100 -> LEAF_100;
+LEAF_101[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=101</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>69</TD>
+</TR></TABLE>>];
+LEAF_101 -> LEAF_103;
+{rank=same LEAF_101 LEAF_103};
+INT_102:p101 -> LEAF_101;
+{rank=same INT_98 INT_102};
+INT_107:p102 -> INT_102;
+INT_106[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=106</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p103"> </TD>
+<TD PORT="p104">71</TD>
+<TD PORT="p105">72</TD>
+</TR></TABLE>>];
+LEAF_103[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=103</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>70</TD>
+</TR></TABLE>>];
+LEAF_103 -> LEAF_104;
+{rank=same LEAF_103 LEAF_104};
+INT_106:p103 -> LEAF_103;
+LEAF_104[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=104</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>71</TD>
+</TR></TABLE>>];
+LEAF_104 -> LEAF_105;
+{rank=same LEAF_104 LEAF_105};
+INT_106:p104 -> LEAF_104;
+LEAF_105[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=105</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>72</TD>
+</TR></TABLE>>];
+LEAF_105 -> LEAF_108;
+{rank=same LEAF_105 LEAF_108};
+INT_106:p105 -> LEAF_105;
+{rank=same INT_102 INT_106};
+INT_107:p106 -> INT_106;
+{rank=same INT_94 INT_107};
+INT_121:p107 -> INT_107;
+INT_120[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=120</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p111"> </TD>
+<TD PORT="p115">76</TD>
+<TD PORT="p119">79</TD>
+</TR></TABLE>>];
+INT_111[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=111</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p108"> </TD>
+<TD PORT="p109">74</TD>
+<TD PORT="p110">75</TD>
+</TR></TABLE>>];
+LEAF_108[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=108</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>73</TD>
+</TR></TABLE>>];
+LEAF_108 -> LEAF_109;
+{rank=same LEAF_108 LEAF_109};
+INT_111:p108 -> LEAF_108;
+LEAF_109[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=109</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>74</TD>
+</TR></TABLE>>];
+LEAF_109 -> LEAF_110;
+{rank=same LEAF_109 LEAF_110};
+INT_111:p109 -> LEAF_109;
+LEAF_110[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=110</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>75</TD>
+</TR></TABLE>>];
+LEAF_110 -> LEAF_112;
+{rank=same LEAF_110 LEAF_112};
+INT_111:p110 -> LEAF_110;
+INT_120:p111 -> INT_111;
+INT_115[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=115</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p112"> </TD>
+<TD PORT="p113">77</TD>
+<TD PORT="p114">78</TD>
+</TR></TABLE>>];
+LEAF_112[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=112</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>76</TD>
+</TR></TABLE>>];
+LEAF_112 -> LEAF_113;
+{rank=same LEAF_112 LEAF_113};
+INT_115:p112 -> LEAF_112;
+LEAF_113[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=113</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>77</TD>
+</TR></TABLE>>];
+LEAF_113 -> LEAF_114;
+{rank=same LEAF_113 LEAF_114};
+INT_115:p113 -> LEAF_113;
+LEAF_114[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=114</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>78</TD>
+</TR></TABLE>>];
+LEAF_114 -> LEAF_116;
+{rank=same LEAF_114 LEAF_116};
+INT_115:p114 -> LEAF_114;
+{rank=same INT_111 INT_115};
+INT_120:p115 -> INT_115;
+INT_119[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=119</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p116"> </TD>
+<TD PORT="p117">80</TD>
+<TD PORT="p118">81</TD>
+</TR></TABLE>>];
+LEAF_116[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=116</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>79</TD>
+</TR></TABLE>>];
+LEAF_116 -> LEAF_117;
+{rank=same LEAF_116 LEAF_117};
+INT_119:p116 -> LEAF_116;
+LEAF_117[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=117</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>80</TD>
+</TR></TABLE>>];
+LEAF_117 -> LEAF_118;
+{rank=same LEAF_117 LEAF_118};
+INT_119:p117 -> LEAF_117;
+LEAF_118[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=118</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>81</TD>
+</TR></TABLE>>];
+LEAF_118 -> LEAF_122;
+{rank=same LEAF_118 LEAF_122};
+INT_119:p118 -> LEAF_118;
+{rank=same INT_115 INT_119};
+INT_120:p119 -> INT_119;
+{rank=same INT_107 INT_120};
+INT_121:p120 -> INT_120;
+INT_134[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="5">P=134</TD></TR>
+<TR><TD COLSPAN="5">max_size=5,min_size=2,size=5</TD></TR>
+<TR><TD PORT="p125"> </TD>
+<TD PORT="p129">85</TD>
+<TD PORT="p133">88</TD>
+<TD PORT="p138">91</TD>
+<TD PORT="p142">94</TD>
+</TR></TABLE>>];
+INT_125[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=125</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p122"> </TD>
+<TD PORT="p123">83</TD>
+<TD PORT="p124">84</TD>
+</TR></TABLE>>];
+LEAF_122[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=122</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>82</TD>
+</TR></TABLE>>];
+LEAF_122 -> LEAF_123;
+{rank=same LEAF_122 LEAF_123};
+INT_125:p122 -> LEAF_122;
+LEAF_123[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=123</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>83</TD>
+</TR></TABLE>>];
+LEAF_123 -> LEAF_124;
+{rank=same LEAF_123 LEAF_124};
+INT_125:p123 -> LEAF_123;
+LEAF_124[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=124</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>84</TD>
+</TR></TABLE>>];
+LEAF_124 -> LEAF_126;
+{rank=same LEAF_124 LEAF_126};
+INT_125:p124 -> LEAF_124;
+INT_134:p125 -> INT_125;
+INT_129[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=129</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p126"> </TD>
+<TD PORT="p127">86</TD>
+<TD PORT="p128">87</TD>
+</TR></TABLE>>];
+LEAF_126[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=126</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>85</TD>
+</TR></TABLE>>];
+LEAF_126 -> LEAF_127;
+{rank=same LEAF_126 LEAF_127};
+INT_129:p126 -> LEAF_126;
+LEAF_127[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=127</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>86</TD>
+</TR></TABLE>>];
+LEAF_127 -> LEAF_128;
+{rank=same LEAF_127 LEAF_128};
+INT_129:p127 -> LEAF_127;
+LEAF_128[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=128</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>87</TD>
+</TR></TABLE>>];
+LEAF_128 -> LEAF_130;
+{rank=same LEAF_128 LEAF_130};
+INT_129:p128 -> LEAF_128;
+{rank=same INT_125 INT_129};
+INT_134:p129 -> INT_129;
+INT_133[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=133</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p130"> </TD>
+<TD PORT="p131">89</TD>
+<TD PORT="p132">90</TD>
+</TR></TABLE>>];
+LEAF_130[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=130</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>88</TD>
+</TR></TABLE>>];
+LEAF_130 -> LEAF_131;
+{rank=same LEAF_130 LEAF_131};
+INT_133:p130 -> LEAF_130;
+LEAF_131[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=131</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>89</TD>
+</TR></TABLE>>];
+LEAF_131 -> LEAF_132;
+{rank=same LEAF_131 LEAF_132};
+INT_133:p131 -> LEAF_131;
+LEAF_132[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=132</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>90</TD>
+</TR></TABLE>>];
+LEAF_132 -> LEAF_135;
+{rank=same LEAF_132 LEAF_135};
+INT_133:p132 -> LEAF_132;
+{rank=same INT_129 INT_133};
+INT_134:p133 -> INT_133;
+INT_138[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=138</TD></TR>
+<TR><TD COLSPAN="3">max_size=5,min_size=2,size=3</TD></TR>
+<TR><TD PORT="p135"> </TD>
+<TD PORT="p136">92</TD>
+<TD PORT="p137">93</TD>
+</TR></TABLE>>];
+LEAF_135[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=135</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>91</TD>
+</TR></TABLE>>];
+LEAF_135 -> LEAF_136;
+{rank=same LEAF_135 LEAF_136};
+INT_138:p135 -> LEAF_135;
+LEAF_136[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=136</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>92</TD>
+</TR></TABLE>>];
+LEAF_136 -> LEAF_137;
+{rank=same LEAF_136 LEAF_137};
+INT_138:p136 -> LEAF_136;
+LEAF_137[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=137</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>93</TD>
+</TR></TABLE>>];
+LEAF_137 -> LEAF_139;
+{rank=same LEAF_137 LEAF_139};
+INT_138:p137 -> LEAF_137;
+{rank=same INT_133 INT_138};
+INT_134:p138 -> INT_138;
+INT_142[shape=plain color=pink label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="4">P=142</TD></TR>
+<TR><TD COLSPAN="4">max_size=5,min_size=2,size=4</TD></TR>
+<TR><TD PORT="p139"> </TD>
+<TD PORT="p140">95</TD>
+<TD PORT="p141">96</TD>
+<TD PORT="p143">97</TD>
+</TR></TABLE>>];
+LEAF_139[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=139</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>94</TD>
+</TR></TABLE>>];
+LEAF_139 -> LEAF_140;
+{rank=same LEAF_139 LEAF_140};
+INT_142:p139 -> LEAF_139;
+LEAF_140[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=140</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>95</TD>
+</TR></TABLE>>];
+LEAF_140 -> LEAF_141;
+{rank=same LEAF_140 LEAF_141};
+INT_142:p140 -> LEAF_140;
+LEAF_141[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="1">P=141</TD></TR>
+<TR><TD COLSPAN="1">max_size=3,min_size=1,size=1</TD></TR>
+<TR><TD>96</TD>
+</TR></TABLE>>];
+LEAF_141 -> LEAF_143;
+{rank=same LEAF_141 LEAF_143};
+INT_142:p141 -> LEAF_141;
+LEAF_143[shape=plain color=green label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+<TR><TD COLSPAN="3">P=143</TD></TR>
+<TR><TD COLSPAN="3">max_size=3,min_size=1,size=3</TD></TR>
+<TR><TD>97</TD>
+<TD>98</TD>
+<TD>99</TD>
+</TR></TABLE>>];
+INT_142:p143 -> LEAF_143;
+{rank=same INT_138 INT_142};
+INT_134:p142 -> INT_142;
+{rank=same INT_120 INT_134};
+INT_121:p134 -> INT_134;
+{rank=same INT_80 INT_121};
+INT_81:p121 -> INT_121;
+}

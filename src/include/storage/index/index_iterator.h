@@ -29,7 +29,7 @@ INDEX_TEMPLATE_ARGUMENTS
 class IndexIterator {
  public:
   // you may define your own constructor based on your member variables
-  IndexIterator(BufferPoolManager* bpm,page_id_t target_leafpgid,int index,IndexPageType page_type);
+  IndexIterator(BufferPoolManager *bpm, page_id_t target_leafpgid, int index, IndexPageType page_type);
   IndexIterator();
   ~IndexIterator();  // NOLINT
 
@@ -39,12 +39,12 @@ class IndexIterator {
 
   auto operator++() -> IndexIterator &;
 
-  auto operator==(const IndexIterator &itr) const -> bool { 
+  auto operator==(const IndexIterator &itr) const -> bool {
     return itr.index_ == index_ && itr.leaf_pgid_ == leaf_pgid_ && page_type_ == itr.page_type_;
   }
 
-  auto operator!=(const IndexIterator &itr) const -> bool { 
-    return page_type_!= itr.page_type_ || itr.index_ != index_ || itr.leaf_pgid_ != leaf_pgid_;
+  auto operator!=(const IndexIterator &itr) const -> bool {
+    return page_type_ != itr.page_type_ || itr.index_ != index_ || itr.leaf_pgid_ != leaf_pgid_;
   }
 
  private:
@@ -53,6 +53,7 @@ class IndexIterator {
   page_id_t leaf_pgid_;
   int index_;
   IndexPageType page_type_;
+  std::pair<KeyType, ValueType> kv_store_;
 };
 
 }  // namespace bustub

@@ -18,8 +18,8 @@
 #include "common/exception.h"
 #include "common/macros.h"
 #include "storage/index/generic_key.h"
-#include "storage/page/b_plus_tree_page.h"
 #include "storage/page/b_plus_tree_internal_page.h"
+#include "storage/page/b_plus_tree_page.h"
 
 namespace bustub {
 /*****************************************************************************
@@ -36,8 +36,7 @@ namespace bustub {
  * @param max_size Maximal size of the page
  */
 INDEX_TEMPLATE_ARGUMENTS
-void B_PLUS_TREE_INTERNAL_PAGE_TYPE::Init(int max_size) 
-{ 
+void B_PLUS_TREE_INTERNAL_PAGE_TYPE::Init(int max_size) {
   SetMaxSize(max_size);
   SetPageType(IndexPageType::INTERNAL_PAGE);
   SetValueAt(0, INVALID_PAGE_ID);
@@ -53,7 +52,7 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::Init(int max_size)
  */
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::KeyAt(int index) const -> KeyType {
-  BUSTUB_ENSURE(index < GetSize() || index > 0,"Inner_page_index range out of size!\n");
+  BUSTUB_ENSURE(index < GetSize() || index > 0, "Inner_page_index range out of size!\n");
   return key_array_[index];
 }
 
@@ -65,23 +64,21 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::KeyAt(int index) const -> KeyType {
  */
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_INTERNAL_PAGE_TYPE::SetKeyAt(int index, const KeyType &key) {
-  BUSTUB_ENSURE(index < GetMaxSize() || index > 0,"Inner_page_index range out of size!\n");
+  BUSTUB_ENSURE(index < GetMaxSize() || index > 0, "Inner_page_index range out of size!\n");
   key_array_[index] = key;
 }
 
-
 INDEX_TEMPLATE_ARGUMENTS
-void B_PLUS_TREE_INTERNAL_PAGE_TYPE::SetValueAt(int index,const ValueType &val){
-  BUSTUB_ENSURE(index < GetMaxSize(),"Inner_page_index range out of max_size!\n");
+void B_PLUS_TREE_INTERNAL_PAGE_TYPE::SetValueAt(int index, const ValueType &val) {
+  BUSTUB_ENSURE(index < GetMaxSize(), "Inner_page_index range out of max_size!\n");
   page_id_array_[index] = val;
 }
 
-
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::ValueIndex(const ValueType &value) const -> int{
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::ValueIndex(const ValueType &value) const -> int {
   int res = 0;
-  for(int i = 0;i< GetSize();i++){
-    if(page_id_array_[i] == value){
+  for (int i = 0; i < GetSize(); i++) {
+    if (page_id_array_[i] == value) {
       res = i;
     }
   }
@@ -97,7 +94,7 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::ValueIndex(const ValueType &value) const ->
  */
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::ValueAt(int index) const -> ValueType {
-  BUSTUB_ENSURE(index < GetSize(),"Inner_page_index range out of max_size!\n");
+  BUSTUB_ENSURE(index < GetSize(), "Inner_page_index range out of max_size!\n");
   return page_id_array_[index];
 }
 

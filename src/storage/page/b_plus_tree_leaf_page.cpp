@@ -33,8 +33,7 @@ namespace bustub {
  * @param max_size Max size of the leaf node
  */
 INDEX_TEMPLATE_ARGUMENTS
-void B_PLUS_TREE_LEAF_PAGE_TYPE::Init(int max_size) 
-{ 
+void B_PLUS_TREE_LEAF_PAGE_TYPE::Init(int max_size) {
   SetPageType(IndexPageType::LEAF_PAGE);
   SetMaxSize(max_size);
   SetSize(0);
@@ -45,30 +44,26 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::Init(int max_size)
  * Helper methods to set/get next page id
  */
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_LEAF_PAGE_TYPE::GetNextPageId() const -> page_id_t { 
-  return next_page_id_;
-}
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::GetNextPageId() const -> page_id_t { return next_page_id_; }
 
 INDEX_TEMPLATE_ARGUMENTS
-void B_PLUS_TREE_LEAF_PAGE_TYPE::SetNextPageId(page_id_t next_page_id) {
-  next_page_id_ = next_page_id;
-}
+void B_PLUS_TREE_LEAF_PAGE_TYPE::SetNextPageId(page_id_t next_page_id) { next_page_id_ = next_page_id; }
 
 /*
  * Helper method to find and return the key associated with input "index" (a.k.a
  * array offset)
  */
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_LEAF_PAGE_TYPE::KeyAt(int index) const -> KeyType { 
-  BUSTUB_ENSURE(index < GetSize(),"Leaf_page_index range out of max_size!\n");
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::KeyAt(int index) const -> KeyType {
+  BUSTUB_ENSURE(index < GetSize(), "Leaf_page_index range out of max_size!\n");
   return key_array_[index];
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_LEAF_PAGE_TYPE::ValueIndex(const ValueType &value) const -> int{
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::ValueIndex(const ValueType &value) const -> int {
   int res = 0;
-  for(int i = 0;i< GetSize();i++){
-    if(rid_array_[i] == value){
+  for (int i = 0; i < GetSize(); i++) {
+    if (rid_array_[i] == value) {
       res = i;
     }
   }
@@ -76,20 +71,20 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::ValueIndex(const ValueType &value) const -> int
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-void B_PLUS_TREE_LEAF_PAGE_TYPE::SetKeyAt(int index, const KeyType &key){
-  BUSTUB_ENSURE(index < GetMaxSize(),"Leaf_page_index range out of max_size!\n");
+void B_PLUS_TREE_LEAF_PAGE_TYPE::SetKeyAt(int index, const KeyType &key) {
+  BUSTUB_ENSURE(index < GetMaxSize(), "Leaf_page_index range out of max_size!\n");
   key_array_[index] = key;
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-void B_PLUS_TREE_LEAF_PAGE_TYPE::SetValueAt(int index,const ValueType &val){
-  BUSTUB_ENSURE(index < GetMaxSize(),"Leaf_page_index range out of max_size!\n");
+void B_PLUS_TREE_LEAF_PAGE_TYPE::SetValueAt(int index, const ValueType &val) {
+  BUSTUB_ENSURE(index < GetMaxSize(), "Leaf_page_index range out of max_size!\n");
   rid_array_[index] = val;
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_LEAF_PAGE_TYPE::ValueAt(int index) const -> ValueType{
-  BUSTUB_ENSURE(index < GetSize(),"Leaf_page_index range out of max_size!\n");
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::ValueAt(int index) const -> ValueType {
+  BUSTUB_ENSURE(index < GetSize(), "Leaf_page_index range out of max_size!\n");
   return rid_array_[index];
 }
 

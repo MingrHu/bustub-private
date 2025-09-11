@@ -153,6 +153,22 @@ void InsertTest1Call() {
       ASSERT_EQ(rids[0].GetSlotNum(), value);
     }
 
+    // tree.Draw(bpm,"/Users/hmr/Desktop/bustub-private/b_plus_tree_graph/tree.dot");
+
+    // // test temp return value
+    // std::vector<RID> val_store;
+    // GenericKey<8> find_key;
+    // auto itr = tree.Begin();
+    // for(auto key:keys){
+    //   const auto &pair = *itr;
+    //   val_store.clear();
+    //   find_key.SetFromInteger(key);
+    //   tree.GetValue(find_key, &val_store);
+    //   printf("value is:%d\n",val_store[0].GetSlotNum());
+    //   printf("iter_val is:%d\n",pair.second.GetSlotNum());
+    //   ++itr;
+    // }
+
     int64_t start_key = 1;
     int64_t current_key = start_key;
 
@@ -443,27 +459,27 @@ void MixTest2Call() {
   }
 }
 
-TEST(BPlusTreeConcurrentTest, DISABLED_InsertTest1) {  // NOLINT
+TEST(BPlusTreeConcurrentTest, InsertTest1) {  // NOLINT
   InsertTest1Call();
 }
 
-TEST(BPlusTreeConcurrentTest, DISABLED_InsertTest2) {  // NOLINT
+TEST(BPlusTreeConcurrentTest, InsertTest2) {  // NOLINT
   InsertTest2Call();
 }
 
-TEST(BPlusTreeConcurrentTest, DISABLED_DeleteTest1) {  // NOLINT
+TEST(BPlusTreeConcurrentTest, DeleteTest1) {  // NOLINT
   DeleteTest1Call();
 }
 
-TEST(BPlusTreeConcurrentTest, DISABLED_DeleteTest2) {  // NOLINT
+TEST(BPlusTreeConcurrentTest, DeleteTest2) {  // NOLINT
   DeleteTest2Call();
 }
 
-TEST(BPlusTreeConcurrentTest, DISABLED_MixTest1) {  // NOLINT
+TEST(BPlusTreeConcurrentTest, MixTest1) {  // NOLINT
   MixTest1Call();
 }
 
-TEST(BPlusTreeConcurrentTest, DISABLED_MixTest2) {  // NOLINT
+TEST(BPlusTreeConcurrentTest, MixTest2) {  // NOLINT
   MixTest2Call();
 }
 }  // namespace bustub

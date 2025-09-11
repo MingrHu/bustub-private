@@ -108,7 +108,7 @@ BufferPoolManager::BufferPoolManager(size_t num_frames, DiskManager *disk_manage
   }
 
   disk_manger_proxy_ = std::make_shared<DiskManagerProxy>(disk_scheduler_);
-  LOG_DEBUG("Start init buffer_pool_manager!\n");
+  // LOG_DEBUG("Start init buffer_pool_manager!\n");
 }
 
 /**

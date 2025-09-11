@@ -24,13 +24,13 @@
 
 #include <algorithm>
 #include <deque>
-#include <mutex>
-#include <stack>
 #include <filesystem>
 #include <iostream>
+#include <mutex>
 #include <optional>
 #include <queue>
 #include <shared_mutex>
+#include <stack>
 #include <string>
 #include <vector>
 
@@ -68,10 +68,9 @@ class Context {
   // You may want to use this when getting value, but not necessary.
   std::deque<ReadPageGuard> read_set_;
 
-  std::stack<page_id_t> indexs_store_; 
+  std::stack<page_id_t> indexs_store_;
 
   auto IsRootPage(page_id_t page_id) -> bool { return page_id == root_page_id_; }
-
 };
 
 #define BPLUSTREE_TYPE BPlusTree<KeyType, ValueType, KeyComparator>
@@ -132,36 +131,36 @@ class BPlusTree {
 
   // accroding key return the index
   // 精确查询 内部节点返回最大小于等于 叶子节点返回找到或没找到
-  auto KeyBinarySearch(const KeyType& key,const BPlusTreePage* page,bool is_leaf)->int;
+  auto KeyBinarySearch(const KeyType &key, const BPlusTreePage *page, bool is_leaf) -> int;
 
   // 返回第一个大于等于目标键的位置
-  auto LowerBound(const KeyType& key,const BPlusTreePage* target_page,bool is_leaf)->int;
+  auto LowerBound(const KeyType &key, const BPlusTreePage *target_page, bool is_leaf) -> int;
 
-  void InsertLeafPageNode(int insert_pos,const KeyType& key,const ValueType& val,LeafPage* leaf_page);
+  void InsertLeafPageNode(int insert_pos, const KeyType &key, const ValueType &val, LeafPage *leaf_page);
 
-  void InsertInnerPageNode(int insert_pos,const KeyType& key,const page_id_t& val,InternalPage* inner_page);
+  void InsertInnerPageNode(int insert_pos, const KeyType &key, const page_id_t &val, InternalPage *inner_page);
 
-  void InnerSplitPage(int split_pos,InternalPage* origional_page,InternalPage* new_page,
-    std::vector<KeyType>& key_block,std::vector<page_id_t>& val_block);
+  void InnerSplitPage(int split_pos, InternalPage *origional_page, InternalPage *new_page,
+                      std::vector<KeyType> &key_block, std::vector<page_id_t> &val_block);
 
-  void LeafSplitPage(int split_pos,LeafPage* origional_page,LeafPage* new_page,
-  page_id_t right_pgid,std::vector<KeyType>& key_block,std::vector<ValueType>& val_block);
+  void LeafSplitPage(int split_pos, LeafPage *origional_page, LeafPage *new_page, page_id_t right_pgid,
+                     std::vector<KeyType> &key_block, std::vector<ValueType> &val_block);
 
-  void DeleteSpeciKeyVal(int delete_pos,BPlusTreePage* op_page,bool is_leaf);
+  void DeleteSpeciKeyVal(int delete_pos, BPlusTreePage *op_page, bool is_leaf);
 
-  auto ParentIsSafe(const BPlusTreePage* cur_page,bool is_insert)->bool;
+  auto ParentIsSafe(const BPlusTreePage *cur_page, bool is_insert) -> bool;
 
-  void AdjustRoot(BPlusTreePage* old_root_page);
+  void AdjustRoot(BPlusTreePage *old_root_page, Context &ctx);
 
-  auto BorrowSibLeft(BPlusTreePage* sib_page,BPlusTreePage* poor_page,bool is_leaf,const KeyType &key)->KeyType;
+  auto BorrowSibLeft(BPlusTreePage *sib_page, BPlusTreePage *poor_page, bool is_leaf, const KeyType &key) -> KeyType;
 
-  auto BorrowSibRight(BPlusTreePage* sib_page,BPlusTreePage* poor_page,bool is_leaf,const KeyType &key)->KeyType;
+  auto BorrowSibRight(BPlusTreePage *sib_page, BPlusTreePage *poor_page, bool is_leaf, const KeyType &key) -> KeyType;
 
-  void MoveToLeft(BPlusTreePage* sib_page,BPlusTreePage* cur_page,bool is_leaf,KeyType &key);
+  void MoveToLeft(BPlusTreePage *sib_page, BPlusTreePage *cur_page, bool is_leaf, KeyType &key);
 
-  auto Redistribute(InternalPage* parent,int child_index,bool is_leaf,BPlusTreePage* child_page)->bool;
+  auto Redistribute(InternalPage *parent, int child_index, bool is_leaf, BPlusTreePage *op_page) -> bool;
 
-  auto MergeNode(InternalPage* parent,int child_index,bool is_leaf,BPlusTreePage* child_page)->page_id_t;
+  auto MergeNode(InternalPage *parent, int child_index, bool is_leaf, BPlusTreePage *op_page) -> page_id_t;
 
   // member variable
   std::string index_name_;

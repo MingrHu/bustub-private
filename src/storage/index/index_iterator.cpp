@@ -33,7 +33,8 @@ INDEX_TEMPLATE_ARGUMENTS
 INDEXITERATOR_TYPE::~IndexIterator() = default;  // NOLINT
 
 INDEX_TEMPLATE_ARGUMENTS
-INDEXITERATOR_TYPE::IndexIterator(BufferPoolManager* bpm,page_id_t target_leafpgid,int index,IndexPageType page_type){
+INDEXITERATOR_TYPE::IndexIterator(BufferPoolManager *bpm, page_id_t target_leafpgid, int index,
+                                  IndexPageType page_type) {
   bpm_ = bpm;
   leaf_pgid_ = target_leafpgid;
   index_ = index;
@@ -41,33 +42,29 @@ INDEXITERATOR_TYPE::IndexIterator(BufferPoolManager* bpm,page_id_t target_leafpg
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto INDEXITERATOR_TYPE::IsEnd() -> bool { 
-  return page_type_ == IndexPageType::INVALID_INDEX_PAGE;
-}
+auto INDEXITERATOR_TYPE::IsEnd() -> bool { return page_type_ == IndexPageType::INVALID_INDEX_PAGE; }
 
 INDEX_TEMPLATE_ARGUMENTS
 auto INDEXITERATOR_TYPE::operator*() -> std::pair<const KeyType &, const ValueType &> {
   auto leaf_page_guard = bpm_->ReadPage(leaf_pgid_);
-  auto leaf_page = leaf_page_guard.As<BPlusTreeLeafPage<KeyType, ValueType, KeyComparator>>();
-  return {leaf_page->KeyAt(index_),leaf_page->ValueAt(index_)};
+  auto leaf_page = leaf_page_guard.template As<BPlusTreeLeafPage<KeyType, ValueType, KeyComparator>>();
+  kv_store_ = {leaf_page->KeyAt(index_), leaf_page->ValueAt(index_)};
+  return kv_store_;
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto INDEXITERATOR_TYPE::operator++() -> INDEXITERATOR_TYPE & { 
-
-  if(page_type_ != IndexPageType::INVALID_INDEX_PAGE){
+auto INDEXITERATOR_TYPE::operator++() -> INDEXITERATOR_TYPE & {
+  if (page_type_ != IndexPageType::INVALID_INDEX_PAGE) {
     auto cur_leaf_guard = bpm_->ReadPage(leaf_pgid_);
-    auto cur_leaf_page = cur_leaf_guard.As<BPlusTreeLeafPage<KeyType, ValueType, KeyComparator>>();
+    auto cur_leaf_page = cur_leaf_guard.template As<BPlusTreeLeafPage<KeyType, ValueType, KeyComparator>>();
     page_id_t next_leaf_pgid = cur_leaf_page->GetNextPageId();
-    if(index_ + 1 !=cur_leaf_page->GetSize()){
+    if (index_ + 1 != cur_leaf_page->GetSize()) {
       index_ += 1;
-    }
-    else if(next_leaf_pgid == INVALID_PAGE_ID){
+    } else if (next_leaf_pgid == INVALID_PAGE_ID) {
       index_ = -1;
       leaf_pgid_ = INVALID_PAGE_ID;
       page_type_ = IndexPageType::INVALID_INDEX_PAGE;
-    }
-    else{
+    } else {
       leaf_pgid_ = next_leaf_pgid;
       index_ = 0;
     }
