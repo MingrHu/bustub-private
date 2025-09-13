@@ -160,6 +160,7 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value) -> bool 
 
   // 尝试读锁去寻找叶子节点
   while (!ctx.read_set_.back().template As<BPlusTreePage>()->IsLeafPage()) {
+    h_page_guard.Drop();
     auto cur_page = ctx.read_set_.back().template As<BPlusTreePage>();
     auto parent_inner_page = static_cast<const InternalPage *>(cur_page);
     int index = KeyBinarySearch(key, parent_inner_page, false);
@@ -167,13 +168,16 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value) -> bool 
     leaf_pgid = parent_inner_page->ValueAt(index);
 
     ctx.read_set_.emplace_back(bpm_->ReadPage(leaf_pgid));
+    // 保证可以拿到父亲保护节点
+    if (ctx.read_set_.back().template As<BPlusTreePage>()->IsLeafPage()) {
+      break;
+    }
     ctx.read_set_.pop_front();
   }
 
   // read_set_一定有叶子节点 先弹出
   ctx.read_set_.pop_back();
   ctx.write_set_.emplace_back(bpm_->WritePage(leaf_pgid));
-  ctx.header_page_ = std::nullopt;
   auto waited_leaf_page = ctx.write_set_.back().template AsMut<LeafPage>();
   if (ParentIsSafe(waited_leaf_page, true)) {
     int insert_pos = LowerBound(key, waited_leaf_page, true);
@@ -187,7 +191,9 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value) -> bool 
 
   // 乐观和悲观的策略上 只要你采用的是悲观策略 就必须全程持有锁
   // 直到当前节点的父节点安全时才能释放之前的锁 否则不能释放
+  ctx.read_set_.clear();
   ctx.write_set_.clear();
+  h_page_guard.Drop();
   ctx.header_page_ = bpm_->WritePage(header_page_id_);
   ctx.root_page_id_ = ctx.header_page_->template As<BPlusTreeHeaderPage>()->root_page_id_;
   // BUSTUB_ENSURE(ctx.root_page_id_!=INVALID_PAGE_ID, "You read the deleted tree but you do not want it empty!\n");
@@ -373,26 +379,29 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key) {
   // Declaration of context instance.
   Context ctx;
   // 乐观锁 一路读锁
-  ctx.header_page_ = bpm_->WritePage(header_page_id_);
-  ctx.root_page_id_ = ctx.header_page_->template As<BPlusTreeHeaderPage>()->root_page_id_;
+  auto h_page_guard = bpm_->ReadPage(header_page_id_);
+  ctx.root_page_id_ = h_page_guard.template As<BPlusTreeHeaderPage>()->root_page_id_;
   ctx.read_set_.emplace_back(bpm_->ReadPage(ctx.root_page_id_));
   auto leaf_pgid = ctx.root_page_id_;
 
   // 尝试读锁去寻找叶子节点
   while (!ctx.read_set_.back().template As<BPlusTreePage>()->IsLeafPage()) {
-    ctx.header_page_ = std::nullopt;
+    h_page_guard.Drop();
     auto cur_page = ctx.read_set_.back().template As<BPlusTreePage>();
     auto parent_inner_page = static_cast<const InternalPage *>(cur_page);
     int index = KeyBinarySearch(key, parent_inner_page, false);
     // 拿到子节点
     leaf_pgid = parent_inner_page->ValueAt(index);
     ctx.read_set_.emplace_back(bpm_->ReadPage(leaf_pgid));
+    if (ctx.read_set_.back().template As<BPlusTreePage>()->IsLeafPage()) {
+      break;
+    }
     ctx.read_set_.pop_front();
   }
 
+  // 这里升级叶子读锁为写锁的时候一定是有父节点保护的
   ctx.read_set_.pop_back();
   ctx.write_set_.emplace_back(bpm_->WritePage(leaf_pgid));
-  ctx.header_page_ = std::nullopt;
   auto waited_leaf_page = ctx.write_set_.front().template AsMut<LeafPage>();
   if (ParentIsSafe(waited_leaf_page, false)) {
     int index = KeyBinarySearch(key, waited_leaf_page, true);
@@ -405,7 +414,9 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key) {
   }
 
   // 不安全则采用悲观锁的方式
+  ctx.read_set_.clear();
   ctx.write_set_.clear();
+  h_page_guard.Drop();
   ctx.header_page_ = bpm_->WritePage(header_page_id_);
   ctx.root_page_id_ = ctx.header_page_->template As<BPlusTreeHeaderPage>()->root_page_id_;
   ctx.write_set_.emplace_back(bpm_->WritePage(ctx.root_page_id_));
