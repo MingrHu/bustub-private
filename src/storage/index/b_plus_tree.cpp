@@ -243,7 +243,7 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value) -> bool 
   // 1.没有父节点了 得自己手动创建一个父节点 所以需要分裂的两部分都传递上去
   // 2.存在父节点 那么左半部分和父节点关系不改变 右半部分和父节点重新建立关系
   // 且需要分割点传递到父节点中 父节点直接将分割点放在原来的索引位置后一位
-  // leaf_max_size_ >> 1: 至少保留一位 (internal_max_size_ >> 1) + 1 保证原节点哨兵位置不改变
+  // (leaf_max_size_ + 1)>> 1: 至少保留一位 (internal_max_size_ >> 1) + 1 保证原节点哨兵位置不改变
 
   // 1 拿到待分裂节点和插入位置信息
   auto o_leaf_page = ctx.write_set_.back().template AsMut<LeafPage>();
@@ -256,6 +256,9 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value) -> bool 
   // 2 先获取一个存放Key和Value的块
   std::vector<KeyType> leafkey_block;
   std::vector<ValueType> leafval_block;
+  leafkey_block.reserve(leaf_max_size_ + 1);
+  leafkey_block.reserve(leaf_max_size_ + 1);
+
   for (int i = 0; i < insert_pos; i++) {
     leafkey_block.push_back(o_leaf_page->KeyAt(i));
     leafval_block.push_back(o_leaf_page->ValueAt(i));
@@ -268,7 +271,7 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value) -> bool 
   }
 
   // 3 保存需要往上传递的分裂信息
-  int split_pos = (leaf_max_size_) >> 1;
+  int split_pos = (leaf_max_size_ + 1) >> 1;
   // printf("leaf_key_size = %zu\n",leafkey_block.size());
   KeyType split_key = leafkey_block[split_pos];
   page_id_t left_pgid = ctx.write_set_.back().GetPageId();
@@ -289,7 +292,7 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value) -> bool 
   // 只要不空 就说明当前父节点都会受影响
   // 但不一定父节点也会分裂 需要判断
   while (!ctx.write_set_.empty()) {
-    // 1.先拿到当前父节点信息
+    // 1.先拿到当前节点信息
     auto parent_page = ctx.write_set_.back().template AsMut<InternalPage>();
     left_pgid = ctx.write_set_.back().GetPageId();
     insert_pos = ctx.indexs_store_.top() + 1;
@@ -305,6 +308,9 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value) -> bool 
     // 先获取一个存放Key和Value的块
     std::vector<KeyType> key_block;
     std::vector<page_id_t> pageid_block;
+    key_block.reserve(internal_max_size_ + 1);
+    pageid_block.reserve(internal_max_size_ + 1);
+
     for (int i = 0; i < insert_pos; i++) {
       if (i > 0) {
         key_block.push_back(parent_page->KeyAt(i));
