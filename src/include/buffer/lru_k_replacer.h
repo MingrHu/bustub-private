@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include <condition_variable>
+#include <cstddef>
 #include <functional>
 #include <limits>
 #include <list>
@@ -96,11 +98,10 @@ class LRUKReplacer {
   void OutputInfo(size_t& access_call,size_t& evict_call);
 
   struct Task{
-    frame_id_t fid_;
     LRUKNode *node_;
     size_t timestamp_;
     bool is_insert_;
-    Task(frame_id_t fid, LRUKNode *node, size_t timestamp,bool is_insert):fid_(fid),node_(node),timestamp_(timestamp),is_insert_(is_insert){};
+    Task(LRUKNode *node, size_t timestamp,bool is_insert):node_(node),timestamp_(timestamp),is_insert_(is_insert){};
   };
 
  private:
@@ -132,18 +133,27 @@ class LRUKReplacer {
   void RemoveNodeInList(LRUKNode *dlnode);
   // 往队列哨兵节点后添加新节点
   void HeadPush(LRUKNode *newnode);
-  // 往freqmap和nodestore添加节点
+  // 往freqmap和nodestore添加节点ß
   void PushNode(frame_id_t fid, LRUKNode *node, size_t timestamp);
   // 更新当前时间戳
   auto Updatetimestamp() -> size_t;
 
   void StartThreadFunc();
 
+  // 为了优化替换器的效率 这里考虑开一个线程专门用于插入删除
+  // map的更新需要时间 因此使用这个线程可以避免插入的时候等待
+  // 而这个频率k表只涉及到访问或者删除
   Channel<std::optional<Task>> request_queue_;
 
   std::optional<std::thread> background_thread_;
 
-  bool is_done_;
+  // 设置一个操作变量
+  std::atomic<int> is_done_;
+
+  // 保护is_done_
+  std::condition_variable cv_;
+
+  std::mutex fk_latch_;
 };
 
 }  // namespace bustub
