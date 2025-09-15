@@ -12,9 +12,6 @@
 
 #pragma once
 
-#include <condition_variable>
-#include <cstddef>
-#include <functional>
 #include <limits>
 #include <list>
 #include <map>
@@ -22,10 +19,10 @@
 #include <optional>
 #include <unordered_map>
 #include <vector>
-#include <thread>
+
 #include "common/config.h"
 #include "common/macros.h"
-#include "common/channel.h"
+
 namespace bustub {
 
 enum class AccessType { Unknown = 0, Lookup, Scan, Index };
@@ -95,15 +92,6 @@ class LRUKReplacer {
 
   auto Size() -> size_t;
 
-  void OutputInfo(size_t& access_call,size_t& evict_call);
-
-  struct Task{
-    LRUKNode *node_;
-    size_t timestamp_;
-    bool is_insert_;
-    Task(LRUKNode *node, size_t timestamp,bool is_insert):node_(node),timestamp_(timestamp),is_insert_(is_insert){};
-  };
-
  private:
   // TODO(student): implement me! You can replace these member variables as you like.
   // Remove maybe_unused if you start using them.
@@ -113,15 +101,11 @@ class LRUKReplacer {
   size_t k_;
   std::mutex latch_;
 
-  // 记录访问和淘汰的调用次数
-  size_t access_;
-  size_t evict_;
-
   // 记录帧对应的LRUKNode节点信息
   std::unordered_map<frame_id_t, LRUKNode *> node_store_;
-  // K频率表
-  std::map<size_t, LRUKNode*> freqk_map_;
-  // 记录频率小于K对应的节点信息
+  // 记录频率K对应的节点信息
+  std::map<size_t, LRUKNode *> freqk_map_;
+  // 记录小于K对应的节点信息
   LRUKNode *head_;
   // 检测帧id是否合法
   auto Validframeid(frame_id_t frame_id) const -> bool;
@@ -132,28 +116,11 @@ class LRUKReplacer {
   // 删除List指定节点
   void RemoveNodeInList(LRUKNode *dlnode);
   // 往队列哨兵节点后添加新节点
-  void HeadPush(LRUKNode *newnode);
-  // 往freqmap和nodestore添加节点ß
+  void Pushback(LRUKNode *newnode);
+  // 往freqmap和nodestore添加节点
   void PushNode(frame_id_t fid, LRUKNode *node, size_t timestamp);
   // 更新当前时间戳
   auto Updatetimestamp() -> size_t;
-
-  void StartThreadFunc();
-
-  // 为了优化替换器的效率 这里考虑开一个线程专门用于插入删除
-  // map的更新需要时间 因此使用这个线程可以避免插入的时候等待
-  // 而这个频率k表只涉及到访问或者删除
-  Channel<std::optional<Task>> request_queue_;
-
-  std::optional<std::thread> background_thread_;
-
-  // 设置一个操作变量
-  std::atomic<int> is_done_;
-
-  // 保护is_done_
-  std::condition_variable cv_;
-
-  std::mutex fk_latch_;
 };
 
 }  // namespace bustub

@@ -150,11 +150,9 @@ class ThreadPool {
             task_que_.pop();
           }
           try {
-              task();
+            task();
           } catch (const std::exception &e) {
-              std::cerr << "线程池发生错误: " << e.what() << std::endl;
-          } catch (...) {  // 捕获所有其他异常
-              std::cerr << "线程池发生未知错误" << std::endl;
+            std::cerr << "线程池发生错误:" << e.what() << std::endl;
           }
         }
       });
@@ -225,6 +223,22 @@ class DiskManagerProxy {
   ~DiskManagerProxy() = default;
 
  private:
+  struct ProxyFrame {
+    // 防止单参数直接隐式转换为结构体对象
+    ProxyFrame(std::shared_ptr<FrameHeader> &frame, bool iswrite, page_id_t oldpgid);
+
+    ProxyFrame(ProxyFrame &&that) noexcept;
+
+    auto operator=(ProxyFrame &&that) noexcept -> ProxyFrame &;
+
+    ProxyFrame() = default;
+
+    bool iswrite_{false};
+
+    std::shared_ptr<FrameHeader> frame_;
+
+    page_id_t oldpgid_{INVALID_PAGE_ID};
+  };
 
   auto WorkThread(page_id_t oldpgid, bool iswrite) -> void;
 
