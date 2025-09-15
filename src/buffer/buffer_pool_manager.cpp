@@ -650,24 +650,6 @@ DiskManagerProxy::DiskManagerProxy(std::shared_ptr<DiskScheduler> &disk_schedule
   thread_pool_ = ThreadPool::GetInstance();
 }
 
-DiskManagerProxy::ProxyFrame::ProxyFrame(std::shared_ptr<FrameHeader> &frame, bool iswrite, page_id_t oldpgid)
-    : iswrite_(iswrite), frame_(frame), oldpgid_(oldpgid){};
-
-DiskManagerProxy::ProxyFrame::ProxyFrame(ProxyFrame &&that) noexcept {
-  iswrite_ = that.iswrite_;
-  frame_ = std::move(that.frame_);
-  oldpgid_ = that.oldpgid_;
-};
-
-auto DiskManagerProxy::ProxyFrame::operator=(ProxyFrame &&that) noexcept -> DiskManagerProxy::ProxyFrame & {
-  if (this != &that) {
-    iswrite_ = that.iswrite_;
-    frame_ = std::move(that.frame_);
-    oldpgid_ = that.oldpgid_;
-  }
-  return *this;
-}
-
 void DiskManagerProxy::ScheduleProxy(std::shared_ptr<FrameHeader> &frame, bool iswrite, page_id_t oldpgid,
                                      const std::vector<char> &dirty_data) {
   // 这里是一个对于frame的拷贝

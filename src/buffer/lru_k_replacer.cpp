@@ -11,6 +11,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "buffer/lru_k_replacer.h"
+#include <optional>
+#include "common/config.h"
 #include "common/exception.h"
 #include "common/macros.h"
 
@@ -32,6 +34,11 @@ LRUKReplacer::LRUKReplacer(size_t num_frames, size_t k) {
   head_ = new LRUKNode();
   head_->prev_ = head_;
   head_->next_ = head_;
+
+  evict_ = 0;
+  access_ = 0;
+  is_done_  = false;
+  background_thread_.emplace([&]{StartThreadFunc();});
 }
 
 LRUKReplacer::~LRUKReplacer() {
@@ -43,6 +50,12 @@ LRUKReplacer::~LRUKReplacer() {
   }
   delete head_;
   head_ = nullptr;
+  request_queue_.Put(std::nullopt);
+  if (background_thread_.has_value()) {
+    background_thread_->join();
+  }
+
+  printf("LRU-K replacer info: Access_call: %zu  Evict_call: %zu  \n",access_,evict_);
 }
 
 /**
@@ -63,6 +76,7 @@ LRUKReplacer::~LRUKReplacer() {
 auto LRUKReplacer::Evict() -> std::optional<frame_id_t> {
   std::optional<frame_id_t> fid = std::nullopt;
   latch_.lock();
+  evict_ += 1;
   if (curr_size_ != 0) {
     // 尝试找对应的节点最久未被访问节点
     LRUKNode *dlnode = nullptr;
@@ -100,12 +114,13 @@ void LRUKReplacer::RecordAccess(frame_id_t frame_id, [[maybe_unused]] AccessType
   // 更新当前时间戳
   auto timestamp = Updatetimestamp();
   latch_.lock();
-  // 当前帧已经有内存了
+  access_ += 1;
+  // 当前帧存在
   if (node_store_.find(frame_id) != node_store_.end()) {
     auto node = node_store_[frame_id];
     // 如果这个节点访问次数大于等于K 尝试删除map里面的
     RemoveNodeInFreqKmap(node);
-    // 把节点添加到队列或频率表
+    // 把节点添加到候补队列或K频率表
     PushNode(frame_id, node, timestamp);
   } else {
     auto newnode = new LRUKNode(k_, frame_id);
@@ -194,10 +209,9 @@ auto LRUKReplacer::Validframeid(frame_id_t frame_id) const -> bool {
 }
 
 void LRUKReplacer::RemoveNodeInFreqKmap(LRUKNode *dlnode) {
-  if (dlnode != nullptr && dlnode->history_.size() == k_) {
-    freqk_map_.erase(dlnode->history_.front());
-    return;
-  }
+  is_done_ = false;
+  std::optional<Task> task = std::make_optional(Task{INVALID_FRAME_ID,dlnode,0,false});
+  request_queue_.Put(task);
 }
 
 void LRUKReplacer::RemoveNodeInList(LRUKNode *dlnode) {
@@ -213,6 +227,7 @@ void LRUKReplacer::RemoveNodeInList(LRUKNode *dlnode) {
 }
 
 auto LRUKReplacer::GetDlnode() -> LRUKNode * {
+  
   LRUKNode *pos = head_->prev_;
   while (pos != head_ && !pos->is_evictable_) {
     pos = pos->prev_;
@@ -229,7 +244,7 @@ auto LRUKReplacer::GetDlnode() -> LRUKNode * {
   return pos;
 }
 
-void LRUKReplacer::Pushback(LRUKNode *node) {
+void LRUKReplacer::HeadPush(LRUKNode *node) {
   LRUKNode *next = head_->next_;
   head_->next_ = node, next->prev_ = node;
   node->prev_ = head_, node->next_ = next;
@@ -243,16 +258,39 @@ void LRUKNode::Updatehistory(size_t timestamp) {
 }
 
 void LRUKReplacer::PushNode(frame_id_t fid, LRUKNode *node, size_t timestamp) {
-  node->Updatehistory(timestamp);
-  if (node->history_.size() == 1 && k_ > 1) {
-    Pushback(node);
-  } else if (node->history_.size() == k_) {
-    RemoveNodeInList(node);
-    freqk_map_[node->history_.front()] = node;
-  }
-  node_store_[fid] = node;
+
+  is_done_ = false;
+  std::optional<Task> task = std::make_optional(Task{fid,node,timestamp,true});
+  request_queue_.Put(task);
 }
 
 auto LRUKReplacer::Updatetimestamp() -> size_t { return current_timestamp_.fetch_add(1, std::memory_order_relaxed); }
+
+void LRUKReplacer::OutputInfo(size_t& access_call,size_t& evict_call){
+  access_call = access_;
+  evict_call = evict_;
+}
+
+void LRUKReplacer::StartThreadFunc(){
+  std::optional<Task> task = std::nullopt;
+  while((task = request_queue_.Get(),task!=std::nullopt)){
+    if(task->is_insert_){
+      task->node_->Updatehistory(task->timestamp_);
+      if (task->node_->history_.size() == 1 && k_ > 1) {
+        HeadPush(task->node_);
+      } else if (task->node_->history_.size() == k_) {
+        RemoveNodeInList(task->node_);
+        freqk_map_[task->node_->history_.front()] = task->node_;
+      }
+      node_store_[task->fid_] = task->node_;
+      is_done_ = true;
+    }
+    else{
+      if (task->node_ != nullptr && task->node_->history_.size() == k_) {
+        freqk_map_.erase(task->node_->history_.front());
+      }
+    }
+  }
+}
 
 }  // namespace bustub

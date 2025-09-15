@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <functional>
 #include <limits>
 #include <list>
 #include <map>
@@ -19,10 +20,10 @@
 #include <optional>
 #include <unordered_map>
 #include <vector>
-
+#include <thread>
 #include "common/config.h"
 #include "common/macros.h"
-
+#include "common/channel.h"
 namespace bustub {
 
 enum class AccessType { Unknown = 0, Lookup, Scan, Index };
@@ -92,6 +93,16 @@ class LRUKReplacer {
 
   auto Size() -> size_t;
 
+  void OutputInfo(size_t& access_call,size_t& evict_call);
+
+  struct Task{
+    frame_id_t fid_;
+    LRUKNode *node_;
+    size_t timestamp_;
+    bool is_insert_;
+    Task(frame_id_t fid, LRUKNode *node, size_t timestamp,bool is_insert):fid_(fid),node_(node),timestamp_(timestamp),is_insert_(is_insert){};
+  };
+
  private:
   // TODO(student): implement me! You can replace these member variables as you like.
   // Remove maybe_unused if you start using them.
@@ -101,11 +112,15 @@ class LRUKReplacer {
   size_t k_;
   std::mutex latch_;
 
+  // 记录访问和淘汰的调用次数
+  size_t access_;
+  size_t evict_;
+
   // 记录帧对应的LRUKNode节点信息
   std::unordered_map<frame_id_t, LRUKNode *> node_store_;
-  // 记录频率K对应的节点信息
-  std::map<size_t, LRUKNode *> freqk_map_;
-  // 记录小于K对应的节点信息
+  // K频率表
+  std::map<size_t, LRUKNode*> freqk_map_;
+  // 记录频率小于K对应的节点信息
   LRUKNode *head_;
   // 检测帧id是否合法
   auto Validframeid(frame_id_t frame_id) const -> bool;
@@ -116,11 +131,19 @@ class LRUKReplacer {
   // 删除List指定节点
   void RemoveNodeInList(LRUKNode *dlnode);
   // 往队列哨兵节点后添加新节点
-  void Pushback(LRUKNode *newnode);
+  void HeadPush(LRUKNode *newnode);
   // 往freqmap和nodestore添加节点
   void PushNode(frame_id_t fid, LRUKNode *node, size_t timestamp);
   // 更新当前时间戳
   auto Updatetimestamp() -> size_t;
+
+  void StartThreadFunc();
+
+  Channel<std::optional<Task>> request_queue_;
+
+  std::optional<std::thread> background_thread_;
+
+  bool is_done_;
 };
 
 }  // namespace bustub
