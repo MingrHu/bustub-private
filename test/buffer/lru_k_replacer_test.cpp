@@ -6,12 +6,15 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <cstdlib>
 #include <memory>
 #include <random>
 #include <set>
 #include <thread>  // NOLINT
+#include <unordered_set>
 #include <vector>
 
+#include "common/config.h"
 #include "gtest/gtest.h"
 
 namespace bustub {
@@ -117,6 +120,49 @@ TEST(LRUKReplacerTest, SampleTest) {
   // Make sure that setting a non-existent frame as evictable or non-evictable doesn't do something strange.
   lru_replacer.SetEvictable(6, false);
   lru_replacer.SetEvictable(6, true);
+}
+
+TEST(LRUKReplacerTest, BenchMarkTest) {
+  int max_frames = 1024;
+  LRUKReplacer lru_replacer(max_frames, 16);
+  std::vector<std::thread> threads_record;
+  int threadnum = 8;
+
+  for(int i = 0;i < 8;i++){
+    threads_record.emplace_back([&,i](){
+      for(auto times = 0;times < max_frames;times++){
+        for(frame_id_t fid = i * (max_frames / threadnum);fid < max_frames / threadnum * (i + 1);fid++)
+          lru_replacer.RecordAccess(fid);
+      }
+    });
+  }
+
+  for(auto &t:threads_record){
+    t.join();
+  }
+    
+
+  std::unordered_set<frame_id_t> evict_record;
+  for(auto fid = 0;fid < max_frames;fid++){
+    frame_id_t val = fid % rand() + 1;
+    lru_replacer.SetEvictable(val, true);
+    evict_record.insert(val);
+  }
+
+  printf("%zu\n",lru_replacer.Size());
+  printf("%zu\n",evict_record.size());
+  for(size_t i = 0;i <evict_record.size();i++){
+    lru_replacer.Evict();
+    ASSERT_EQ(evict_record.size() - i, lru_replacer.Size());
+  }
+
+  size_t rec = 0;
+  for(const auto& v:evict_record){
+    rec++;
+    lru_replacer.RecordAccess(v);
+    ASSERT_EQ(evict_record.size() - rec , lru_replacer.Size());
+  }
+
 }
 
 }  // namespace bustub

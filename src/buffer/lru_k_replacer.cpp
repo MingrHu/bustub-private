@@ -43,6 +43,7 @@ LRUKReplacer::~LRUKReplacer() {
   }
   delete head_;
   head_ = nullptr;
+  printf("LRU-K replacer info: Access calls: %zu ,Evict calls: %zu\n",access_call,evict_call);
 }
 
 /**
@@ -63,6 +64,7 @@ LRUKReplacer::~LRUKReplacer() {
 auto LRUKReplacer::Evict() -> std::optional<frame_id_t> {
   std::optional<frame_id_t> fid = std::nullopt;
   latch_.lock();
+  evict_call += 1;
   if (curr_size_ != 0) {
     // 尝试找对应的节点最久未被访问节点
     LRUKNode *dlnode = nullptr;
@@ -100,7 +102,8 @@ void LRUKReplacer::RecordAccess(frame_id_t frame_id, [[maybe_unused]] AccessType
   // 更新当前时间戳
   auto timestamp = Updatetimestamp();
   latch_.lock();
-  // 当前帧已经有内存了
+  access_call += 1;
+  // 当前帧已经存在
   if (node_store_.find(frame_id) != node_store_.end()) {
     auto node = node_store_[frame_id];
     // 如果这个节点访问次数大于等于K 尝试删除map里面的
@@ -169,8 +172,8 @@ void LRUKReplacer::Remove(frame_id_t frame_id) {
     RemoveNodeInFreqKmap(dlnode);
     node_store_.erase(frame_id);
     curr_size_ -= 1;
-    delete dlnode;
-    dlnode = nullptr;
+    // delete dlnode;
+    // dlnode = nullptr;
   }
   latch_.unlock();
 }
