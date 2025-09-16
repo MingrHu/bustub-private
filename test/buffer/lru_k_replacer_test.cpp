@@ -158,7 +158,9 @@ TEST(LRUKReplacerTest, BenchMarkTest) {
     ASSERT_EQ(evict_record.size() - i - 1, lru_replacer.Size());
   }
 
+  size_t rec = 0;
   for(const auto& v:evict_record){
+    rec++;
     lru_replacer.RecordAccess(v);
   }
   ASSERT_EQ(0, lru_replacer.Size());
