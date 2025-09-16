@@ -124,7 +124,7 @@ static inline std::once_flag thread_once;
 
 class ThreadPool {
  public:
-  static auto GetInstance(int num = 16) -> std::shared_ptr<ThreadPool> {
+  static auto GetInstance(int num = 128) -> std::shared_ptr<ThreadPool> {
     std::call_once(thread_once, InitInstance, num);
     return pool;
   }
