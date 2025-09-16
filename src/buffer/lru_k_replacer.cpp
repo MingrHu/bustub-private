@@ -11,6 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "buffer/lru_k_replacer.h"
+#include <climits>
 #include "common/exception.h"
 #include "common/macros.h"
 
@@ -27,7 +28,7 @@ LRUKReplacer::LRUKReplacer(size_t num_frames, size_t k) {
   replacer_size_ = num_frames;
   node_store_.reserve(num_frames);
   k_ = k;
-  current_timestamp_.store(0);
+  current_timestamp_ = 0;
   curr_size_ = 0;
   head_ = new LRUKNode();
   head_->prev_ = head_;
@@ -71,9 +72,8 @@ auto LRUKReplacer::Evict() -> std::optional<frame_id_t> {
     dlnode = GetDlnode();
     if (dlnode != nullptr) {
       fid = dlnode->fid_;
-      // 从frekmap移除
-      RemoveNodeInFreqKmap(dlnode);
-      RemoveNodeInList(dlnode);
+      // 移除链表和频率表节点
+      RemoveNode(dlnode);
       // 重置初始化这个节点 不释放内存
       // 避免频繁申请释放空间
       dlnode->Clearcurnode();
@@ -100,19 +100,19 @@ auto LRUKReplacer::Evict() -> std::optional<frame_id_t> {
 void LRUKReplacer::RecordAccess(frame_id_t frame_id, [[maybe_unused]] AccessType access_type) {
   // BUSTUB_ENSURE(!Validframeid(frame_id), "Invalid frame id!");
   // 更新当前时间戳
-  auto timestamp = Updatetimestamp();
   latch_.lock();
+  current_timestamp_ += 1;
   access_call_ += 1;
   // 当前帧已经存在
   if (node_store_.find(frame_id) != node_store_.end()) {
     auto node = node_store_[frame_id];
     // 如果这个节点访问次数大于等于K 尝试删除map里面的
-    RemoveNodeInFreqKmap(node);
+    RemoveNode(node);
     // 把节点添加到队列或频率表
-    PushNode(frame_id, node, timestamp);
+    PushNode(frame_id, node, current_timestamp_);
   } else {
     auto newnode = new LRUKNode(k_, frame_id);
-    PushNode(frame_id, newnode, timestamp);
+    PushNode(frame_id, newnode, current_timestamp_);
   }
   latch_.unlock();
 }
@@ -168,12 +168,11 @@ void LRUKReplacer::Remove(frame_id_t frame_id) {
   if (node_store_.find(frame_id) != node_store_.end()) {
     LRUKNode *dlnode = node_store_[frame_id];
     // BUSTUB_ASSERT(dlnode->is_evictable_, "This frame can not remove!");
-    RemoveNodeInList(dlnode);
-    RemoveNodeInFreqKmap(dlnode);
+    RemoveNode(dlnode);
     node_store_.erase(frame_id);
     curr_size_ -= 1;
-    // delete dlnode;
-    // dlnode = nullptr;
+    delete dlnode;
+    dlnode = nullptr;
   }
   latch_.unlock();
 }
@@ -196,7 +195,8 @@ auto LRUKReplacer::Validframeid(frame_id_t frame_id) const -> bool {
   return frame_id < 0 || static_cast<size_t>(frame_id) > replacer_size_;
 }
 
-void LRUKReplacer::RemoveNodeInFreqKmap(LRUKNode *dlnode) {
+void LRUKReplacer::RemoveNode(LRUKNode *dlnode) {
+  RemoveNodeInList(dlnode);
   if (dlnode != nullptr && dlnode->history_.size() == k_) {
     freqk_map_.erase(dlnode->history_.front());
     return;
@@ -255,7 +255,5 @@ void LRUKReplacer::PushNode(frame_id_t fid, LRUKNode *node, size_t timestamp) {
   }
   node_store_[fid] = node;
 }
-
-auto LRUKReplacer::Updatetimestamp() -> size_t { return current_timestamp_.fetch_add(1, std::memory_order_relaxed); }
 
 }  // namespace bustub

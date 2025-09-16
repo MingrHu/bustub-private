@@ -47,7 +47,7 @@ class LRUKNode {
 
   LRUKNode() : k_(0), fid_(0), is_evictable_(false), is_initial_(false), prev_(nullptr), next_(nullptr){};
 
-  LRUKNode(size_t k, frame_id_t fid) : k_(k), fid_(fid), is_evictable_(false), is_initial_(false){};
+  LRUKNode(size_t k, frame_id_t fid) : k_(k), fid_(fid), is_evictable_(false), is_initial_(false),prev_(nullptr), next_(nullptr){};
 
   void Updatehistory(size_t timestamp);
 
@@ -95,7 +95,7 @@ class LRUKReplacer {
  private:
   // TODO(student): implement me! You can replace these member variables as you like.
   // Remove maybe_unused if you start using them.
-  std::atomic<size_t> current_timestamp_;
+  size_t current_timestamp_;
   size_t curr_size_;
   size_t replacer_size_;
   size_t k_;
@@ -115,16 +115,14 @@ class LRUKReplacer {
   auto Validframeid(frame_id_t frame_id) const -> bool;
   // 获取队列待淘汰节点
   auto GetDlnode() -> LRUKNode *;
-  // 删除map指定节点
-  void RemoveNodeInFreqKmap(LRUKNode *dlnode);
+  // 删除指定节点 不释放内存
+  void RemoveNode(LRUKNode *dlnode);
   // 删除List指定节点
   void RemoveNodeInList(LRUKNode *dlnode);
   // 往队列哨兵节点后添加新节点
   void Pushback(LRUKNode *newnode);
   // 往freqmap和nodestore添加节点
   void PushNode(frame_id_t fid, LRUKNode *node, size_t timestamp);
-  // 更新当前时间戳
-  auto Updatetimestamp() -> size_t;
 };
 
 }  // namespace bustub
