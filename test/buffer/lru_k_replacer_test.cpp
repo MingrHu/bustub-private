@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "common/config.h"
+#include "common/logger.h"
 #include "gtest/gtest.h"
 
 namespace bustub {
@@ -128,7 +129,7 @@ TEST(LRUKReplacerTest, BenchMarkTest) {
   std::vector<std::thread> threads_record;
   int threadnum = 8;
   threads_record.reserve(threadnum);
-
+  LOG_DEBUG("INSERT START\n");
   for(int i = 0;i < 8;i++){
     threads_record.emplace_back([&,i](){
       for(auto times = 0;times < max_frames;times++){
@@ -143,7 +144,7 @@ TEST(LRUKReplacerTest, BenchMarkTest) {
   for(auto &t:threads_record){
     t.join();
   }
-    
+  LOG_DEBUG("INSERT END\n");
 
   std::unordered_set<frame_id_t> evict_record;
   for(auto fid = 0;fid < max_frames;fid++){
