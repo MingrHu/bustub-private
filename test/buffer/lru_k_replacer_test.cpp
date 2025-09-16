@@ -127,12 +127,15 @@ TEST(LRUKReplacerTest, BenchMarkTest) {
   LRUKReplacer lru_replacer(max_frames, 16);
   std::vector<std::thread> threads_record;
   int threadnum = 8;
+  threads_record.reserve(threadnum);
 
   for(int i = 0;i < 8;i++){
     threads_record.emplace_back([&,i](){
       for(auto times = 0;times < max_frames;times++){
-        for(frame_id_t fid = i * (max_frames / threadnum);fid < max_frames / threadnum * (i + 1);fid++)
+        for(frame_id_t fid = i * (max_frames / threadnum);fid < max_frames / threadnum * (i + 1);fid++){
           lru_replacer.RecordAccess(fid);
+        }
+          
       }
     });
   }
@@ -144,24 +147,22 @@ TEST(LRUKReplacerTest, BenchMarkTest) {
 
   std::unordered_set<frame_id_t> evict_record;
   for(auto fid = 0;fid < max_frames;fid++){
-    frame_id_t val = fid % rand() + 1;
+    frame_id_t val = fid % rand();
     lru_replacer.SetEvictable(val, true);
     evict_record.insert(val);
   }
 
-  printf("%zu\n",lru_replacer.Size());
-  printf("%zu\n",evict_record.size());
   for(size_t i = 0;i <evict_record.size();i++){
     lru_replacer.Evict();
-    ASSERT_EQ(evict_record.size() - i, lru_replacer.Size());
+    ASSERT_EQ(evict_record.size() - i - 1, lru_replacer.Size());
   }
 
   size_t rec = 0;
   for(const auto& v:evict_record){
     rec++;
     lru_replacer.RecordAccess(v);
-    ASSERT_EQ(evict_record.size() - rec , lru_replacer.Size());
   }
+  ASSERT_EQ(0, lru_replacer.Size());
 
 }
 
