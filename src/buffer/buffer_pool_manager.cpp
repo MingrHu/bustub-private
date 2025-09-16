@@ -18,8 +18,6 @@
 #include <memory>
 #include <mutex>
 #include <optional>
-#include <string>
-#include <thread>
 #include <vector>
 #include "common/config.h"
 #include "common/logger.h"

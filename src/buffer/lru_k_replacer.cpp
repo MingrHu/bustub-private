@@ -11,7 +11,11 @@
 //===----------------------------------------------------------------------===//
 
 #include "buffer/lru_k_replacer.h"
+#include <cassert>
 #include <climits>
+#include <cstdio>
+#include <mutex>
+#include <optional>
 #include "common/exception.h"
 #include "common/macros.h"
 
@@ -33,9 +37,19 @@ LRUKReplacer::LRUKReplacer(size_t num_frames, size_t k) {
   head_ = new LRUKNode();
   head_->prev_ = head_;
   head_->next_ = head_;
+  pin_count_.store(0);
+
+  back_thread_.emplace([&](){
+    Updatefkmap();
+  });
 }
 
 LRUKReplacer::~LRUKReplacer() {
+  task_que_.Put(std::nullopt);
+  if(back_thread_.has_value()){
+    back_thread_->join();
+  }
+
   for (auto p : node_store_) {
     if (p.second != nullptr) {
       delete p.second;
@@ -74,6 +88,7 @@ auto LRUKReplacer::Evict() -> std::optional<frame_id_t> {
       fid = dlnode->fid_;
       // 移除链表和频率表节点
       RemoveNode(dlnode);
+      WaitTaskFinish();
       // 重置初始化这个节点 不释放内存
       // 避免频繁申请释放空间
       dlnode->Clearcurnode();
@@ -106,7 +121,7 @@ void LRUKReplacer::RecordAccess(frame_id_t frame_id, [[maybe_unused]] AccessType
   // 当前帧已经存在
   if (node_store_.find(frame_id) != node_store_.end()) {
     auto node = node_store_[frame_id];
-    // 如果这个节点访问次数大于等于K 尝试删除map里面的
+    // 如果这个节点访问次数大于等于K 尝试移除map里面的
     RemoveNode(node);
     // 把节点添加到队列或频率表
     PushNode(frame_id, node, current_timestamp_);
@@ -169,6 +184,8 @@ void LRUKReplacer::Remove(frame_id_t frame_id) {
     LRUKNode *dlnode = node_store_[frame_id];
     // BUSTUB_ASSERT(dlnode->is_evictable_, "This frame can not remove!");
     RemoveNode(dlnode);
+    // 等待任务队列处理完
+    WaitTaskFinish();
     node_store_.erase(frame_id);
     curr_size_ -= 1;
     delete dlnode;
@@ -195,14 +212,6 @@ auto LRUKReplacer::Validframeid(frame_id_t frame_id) const -> bool {
   return frame_id < 0 || static_cast<size_t>(frame_id) > replacer_size_;
 }
 
-void LRUKReplacer::RemoveNode(LRUKNode *dlnode) {
-  RemoveNodeInList(dlnode);
-  if (dlnode != nullptr && dlnode->history_.size() == k_) {
-    freqk_map_.erase(dlnode->history_.front());
-    return;
-  }
-}
-
 void LRUKReplacer::RemoveNodeInList(LRUKNode *dlnode) {
   if (dlnode == nullptr || dlnode->prev_ == nullptr || dlnode->next_ == nullptr) {
     return;
@@ -215,7 +224,21 @@ void LRUKReplacer::RemoveNodeInList(LRUKNode *dlnode) {
   dlnode->prev_ = nullptr;
 }
 
+void LRUKReplacer::PushNodeInlist(LRUKNode *node) {
+  LRUKNode *next = head_->next_;
+  head_->next_ = node, next->prev_ = node;
+  node->prev_ = head_, node->next_ = next;
+}
+
+void LRUKNode::Updatehistory(size_t timestamp) {
+  if (history_.size() == k_) {
+    history_.pop_front();
+  }
+  history_.push_back(timestamp);
+}
+
 auto LRUKReplacer::GetDlnode() -> LRUKNode * {
+  WaitTaskFinish();
   LRUKNode *pos = head_->prev_;
   while (pos != head_ && !pos->is_evictable_) {
     pos = pos->prev_;
@@ -232,28 +255,57 @@ auto LRUKReplacer::GetDlnode() -> LRUKNode * {
   return pos;
 }
 
-void LRUKReplacer::Pushback(LRUKNode *node) {
-  LRUKNode *next = head_->next_;
-  head_->next_ = node, next->prev_ = node;
-  node->prev_ = head_, node->next_ = next;
-}
-
-void LRUKNode::Updatehistory(size_t timestamp) {
-  if (history_.size() == k_) {
-    history_.pop_front();
-  }
-  history_.push_back(timestamp);
-}
-
 void LRUKReplacer::PushNode(frame_id_t fid, LRUKNode *node, size_t timestamp) {
-  node->Updatehistory(timestamp);
-  if (node->history_.size() == 1 && k_ > 1) {
-    Pushback(node);
-  } else if (node->history_.size() == k_) {
-    RemoveNodeInList(node);
-    freqk_map_[node->history_.front()] = node;
-  }
+  pin_count_.fetch_add(1);
   node_store_[fid] = node;
+  task_que_.Put(std::optional{Task{node,timestamp,true}});
 }
+
+void LRUKReplacer::RemoveNode(LRUKNode *dlnode) {
+  pin_count_.fetch_add(1);
+  task_que_.Put(std::optional {Task{dlnode,0,false}});
+}
+
+void LRUKReplacer::Updatefkmap(){
+  std::optional<Task> task = std::nullopt;
+  while((task = task_que_.Get(),task.has_value())){
+    // 如果是插入操作
+    if(task->is_insert_){
+      task->node_->Updatehistory(task->timestamp_);
+
+      if(task->node_->history_.size() == 1 && k_ > 1){
+        PushNodeInlist(task->node_);
+      }
+      else{
+        RemoveNodeInList(task->node_);
+        freqk_map_[task->node_->history_.front()] = task->node_;
+      }
+    }
+    // 否则是移除操作
+    else{
+      RemoveNodeInList(task->node_);
+      if(task->node_ != nullptr && task->node_->history_.size() == k_){
+        freqk_map_.erase(task->node_->history_.front());
+      }
+    }
+    // 更新变量
+    { 
+      std::unique_lock lacth(guard_latch_);
+      // printf("pincount is:%lld\n",pin_count_.load());
+      // BUSTUB_ENSURE(pin_count_.load() > 0, "pin_count erro! Your pincount is lower than 1!\n");
+      pin_count_.fetch_sub(1);
+      cv_.notify_all();
+    }
+
+  }
+}
+
+void LRUKReplacer::WaitTaskFinish(){
+  std::unique_lock lacth(guard_latch_);
+  while(pin_count_.load() !=0){
+    cv_.wait(lacth);
+  }
+}
+
 
 }  // namespace bustub

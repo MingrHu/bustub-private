@@ -12,14 +12,18 @@
 
 #pragma once
 
-#include <limits>
+#include <atomic>
+#include <condition_variable>
+#include <cstddef>
+#include <cstdint>
 #include <list>
 #include <map>
 #include <mutex>  // NOLINT
 #include <optional>
+#include <thread>
 #include <unordered_map>
-#include <vector>
 
+#include "common/channel.h"
 #include "common/config.h"
 #include "common/macros.h"
 
@@ -34,7 +38,7 @@ class LRUKNode {
 
   // 统一push_back插入
   std::list<size_t> history_;
-  // list能容纳的最大访问记录个数
+  // 频次阈值k
   size_t k_;
   // 帧ID
   frame_id_t fid_;
@@ -105,6 +109,14 @@ class LRUKReplacer {
   size_t access_call_{0};
   size_t evict_call_{0};
 
+  struct Task{
+    LRUKNode* node_;
+    size_t timestamp_;
+    bool is_insert_;
+    Task(LRUKNode* node,size_t timestamp,bool is_insert):node_(node),
+    timestamp_(timestamp),is_insert_((is_insert)){};
+  };
+
   // 记录帧对应的LRUKNode节点信息
   std::unordered_map<frame_id_t, LRUKNode *> node_store_;
   // 记录频率K对应的节点信息
@@ -120,9 +132,23 @@ class LRUKReplacer {
   // 删除List指定节点
   void RemoveNodeInList(LRUKNode *dlnode);
   // 往队列哨兵节点后添加新节点
-  void Pushback(LRUKNode *newnode);
+  void PushNodeInlist(LRUKNode *newnode);
   // 往freqmap和nodestore添加节点
   void PushNode(frame_id_t fid, LRUKNode *node, size_t timestamp);
+
+  void Updatefkmap();
+
+  void WaitTaskFinish();
+
+  Channel<std::optional<Task>> task_que_;
+
+  std::optional<std::thread> back_thread_;
+
+  std::atomic<int64_t> pin_count_;
+
+  std::condition_variable cv_;
+
+  std::mutex guard_latch_;
 };
 
 }  // namespace bustub
