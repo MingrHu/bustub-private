@@ -102,8 +102,8 @@ class LRUKReplacer {
   std::mutex latch_;
 
   // 测试调用次数
-  size_t access_call{0};
-  size_t evict_call{0};
+  size_t access_call_{0};
+  size_t evict_call_{0};
 
   // 记录帧对应的LRUKNode节点信息
   std::unordered_map<frame_id_t, LRUKNode *> node_store_;

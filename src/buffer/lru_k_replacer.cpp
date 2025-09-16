@@ -43,7 +43,7 @@ LRUKReplacer::~LRUKReplacer() {
   }
   delete head_;
   head_ = nullptr;
-  printf("LRU-K replacer info: Access calls: %zu ,Evict calls: %zu\n",access_call,evict_call);
+  printf("LRU-K replacer info: Access calls: %zu ,Evict calls: %zu\n",access_call_,evict_call_);
 }
 
 /**
@@ -64,7 +64,7 @@ LRUKReplacer::~LRUKReplacer() {
 auto LRUKReplacer::Evict() -> std::optional<frame_id_t> {
   std::optional<frame_id_t> fid = std::nullopt;
   latch_.lock();
-  evict_call += 1;
+  evict_call_ += 1;
   if (curr_size_ != 0) {
     // 尝试找对应的节点最久未被访问节点
     LRUKNode *dlnode = nullptr;
@@ -102,7 +102,7 @@ void LRUKReplacer::RecordAccess(frame_id_t frame_id, [[maybe_unused]] AccessType
   // 更新当前时间戳
   auto timestamp = Updatetimestamp();
   latch_.lock();
-  access_call += 1;
+  access_call_ += 1;
   // 当前帧已经存在
   if (node_store_.find(frame_id) != node_store_.end()) {
     auto node = node_store_[frame_id];
