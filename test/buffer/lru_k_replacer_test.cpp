@@ -4,11 +4,9 @@
 
 #include "buffer/lru_k_replacer.h"
 
-#include <algorithm>
 #include <cstdio>
-#include <memory>
-#include <random>
-#include <set>
+#include <unordered_set>
+#include "common/logger.h"
 #include <thread>  // NOLINT
 #include <vector>
 
@@ -16,7 +14,7 @@
 
 namespace bustub {
 
-TEST(LRUKReplacerTest, DISABLED_SampleTest) {
+TEST(LRUKReplacerTest, SampleTest) {
   // Note that comparison with `std::nullopt` always results in `false`, and if the optional type actually does contain
   // a value, the comparison will compare the inner value.
   // See: https://devblogs.microsoft.com/oldnewthing/20211004-00/?p=105754
@@ -118,5 +116,48 @@ TEST(LRUKReplacerTest, DISABLED_SampleTest) {
   lru_replacer.SetEvictable(6, false);
   lru_replacer.SetEvictable(6, true);
 }
+
+TEST(LRUKReplacerTest, BenchMarkTest) {
+  int max_frames = 1024;
+  LRUKReplacer lru_replacer(max_frames, 16);
+  std::vector<std::thread> threads_record;
+  int threadnum = 8;
+  threads_record.reserve(threadnum);
+  LOG_DEBUG("INSERT START\n");
+  for(int i = 0;i < 8;i++){
+    threads_record.emplace_back([&,i](){
+      for(auto times = 0;times < max_frames;times++){
+        for(frame_id_t fid = i * (max_frames / threadnum);fid < max_frames / threadnum * (i + 1);fid++){
+          lru_replacer.RecordAccess(fid);
+        }
+          
+      }
+    });
+  }
+
+  for(auto &t:threads_record){
+    t.join();
+  }
+  LOG_DEBUG("INSERT END\n");
+
+  std::unordered_set<frame_id_t> evict_record;
+  for(auto fid = 0;fid < max_frames;fid++){
+    frame_id_t val = fid % rand();
+    lru_replacer.SetEvictable(val, true);
+    evict_record.insert(val);
+  }
+
+  for(size_t i = 0;i <evict_record.size();i++){
+    lru_replacer.Evict();
+    ASSERT_EQ(evict_record.size() - i - 1, lru_replacer.Size());
+  }
+
+  for(const auto& v:evict_record){
+    lru_replacer.RecordAccess(v);
+  }
+  ASSERT_EQ(0, lru_replacer.Size());
+
+}
+
 
 }  // namespace bustub

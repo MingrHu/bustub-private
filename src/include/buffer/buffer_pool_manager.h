@@ -27,7 +27,6 @@
 #include <vector>
 
 #include "buffer/lru_k_replacer.h"
-#include "common/channel.h"
 #include "common/config.h"
 #include "recovery/log_manager.h"
 #include "storage/disk/disk_scheduler.h"

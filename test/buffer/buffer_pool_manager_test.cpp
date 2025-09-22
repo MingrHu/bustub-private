@@ -11,7 +11,6 @@
 //===----------------------------------------------------------------------===//
 
 #include <cstdio>
-#include <deque>
 #include <filesystem>
 
 #include "buffer/buffer_pool_manager.h"
@@ -27,7 +26,7 @@ const size_t FRAMES = 10;
 // Note that this test assumes you are using the an LRU-K replacement policy.
 const size_t K_DIST = 5;
 
-TEST(BufferPoolManagerTest, DISABLED_VeryBasicTest) {
+TEST(BufferPoolManagerTest, VeryBasicTest) {
   // A very basic test.
 
   auto disk_manager = std::make_shared<DiskManager>(db_fname);
