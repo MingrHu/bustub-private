@@ -1,15 +1,3 @@
-//===----------------------------------------------------------------------===//
-//
-//                         BusTub
-//
-// expression_factory.cpp
-//
-// Identification: src/planner/expression_factory.cpp
-//
-// Copyright (c) 2015-2025, Carnegie Mellon University Database Group
-//
-//===----------------------------------------------------------------------===//
-
 #include "binder/bound_expression.h"
 #include "binder/expressions/bound_func_call.h"
 #include "binder/statement/select_statement.h"

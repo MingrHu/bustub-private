@@ -1,15 +1,3 @@
-//===----------------------------------------------------------------------===//
-//
-//                         BusTub
-//
-// stl_equal_wrapper.h
-//
-// Identification: src/include/storage/index/stl_equal_wrapper.h
-//
-// Copyright (c) 2015-2025, Carnegie Mellon University Database Group
-//
-//===----------------------------------------------------------------------===//
-
 #pragma once
 
 namespace bustub {

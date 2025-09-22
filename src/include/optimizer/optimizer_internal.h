@@ -1,15 +1,3 @@
-//===----------------------------------------------------------------------===//
-//
-//                         BusTub
-//
-// optimizer_internal.h
-//
-// Identification: src/include/optimizer/optimizer_internal.h
-//
-// Copyright (c) 2015-2025, Carnegie Mellon University Database Group
-//
-//===----------------------------------------------------------------------===//
-
 #pragma once
 
 namespace bustub {

@@ -1,15 +1,3 @@
-//===----------------------------------------------------------------------===//
-//
-//                         BusTub
-//
-// wasm-shell.cpp
-//
-// Identification: tools/wasm-shell/wasm-shell.cpp
-//
-// Copyright (c) 2015-2025, Carnegie Mellon University Database Group
-//
-//===----------------------------------------------------------------------===//
-
 #include <cmath>
 
 #include <cstring>
