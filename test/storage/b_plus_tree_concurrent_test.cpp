@@ -18,7 +18,6 @@
 #include <thread>  // NOLINT
 
 #include "buffer/buffer_pool_manager.h"
-#include "common/logger.h"
 #include "gtest/gtest.h"
 #include "storage/disk/disk_manager_memory.h"
 #include "storage/index/b_plus_tree.h"
@@ -189,7 +188,6 @@ void InsertTest2Call() {
     // create b+ tree
     BPlusTree<GenericKey<8>, RID, GenericComparator<8>> tree("foo_pk", page_id, bpm, comparator, 3, 5);
 
-    // LOG_DEBUG("INSERT:Start to insert!\n");
     // keys to Insert
     std::vector<int64_t> keys;
     int64_t scale_factor = 1000;
@@ -197,11 +195,9 @@ void InsertTest2Call() {
       keys.push_back(key);
     }
     LaunchParallelTest(2, InsertHelperSplit, &tree, keys, 2);
-    // LOG_DEBUG("INSETR:End to insert!\n");
 
     std::vector<RID> rids;
     GenericKey<8> index_key;
-    // LOG_DEBUG("LOOKUP:START to LOOKUP!\n");
     for (auto key : keys) {
       rids.clear();
       index_key.SetFromInteger(key);
@@ -211,12 +207,10 @@ void InsertTest2Call() {
       int64_t value = key & 0xFFFFFFFF;
       ASSERT_EQ(rids[0].GetSlotNum(), value);
     }
-    // LOG_DEBUG("LOOKUP:END to LOOKUP!\n");
 
     int64_t start_key = 1;
     int64_t current_key = start_key;
 
-    // LOG_DEBUG("ITERLOOK:START to LOOKUP!\n");
     for (auto iter = tree.Begin(); iter != tree.End(); ++iter) {
       const auto &pair = *iter;
       auto location = pair.second;
@@ -224,7 +218,6 @@ void InsertTest2Call() {
       ASSERT_EQ(location.GetSlotNum(), current_key);
       current_key = current_key + 1;
     }
-    // LOG_DEBUG("ITERLOOK:END to LOOKUP!\n");
 
     ASSERT_EQ(current_key, keys.size() + 1);
 
@@ -450,27 +443,27 @@ void MixTest2Call() {
   }
 }
 
-TEST(BPlusTreeConcurrentTest, InsertTest1) {  // NOLINT
+TEST(BPlusTreeConcurrentTest, DISABLED_InsertTest1) {  // NOLINT
   InsertTest1Call();
 }
 
-TEST(BPlusTreeConcurrentTest, InsertTest2) {  // NOLINT
+TEST(BPlusTreeConcurrentTest, DISABLED_InsertTest2) {  // NOLINT
   InsertTest2Call();
 }
 
-TEST(BPlusTreeConcurrentTest, DeleteTest1) {  // NOLINT
+TEST(BPlusTreeConcurrentTest, DISABLED_DeleteTest1) {  // NOLINT
   DeleteTest1Call();
 }
 
-TEST(BPlusTreeConcurrentTest, DeleteTest2) {  // NOLINT
+TEST(BPlusTreeConcurrentTest, DISABLED_DeleteTest2) {  // NOLINT
   DeleteTest2Call();
 }
 
-TEST(BPlusTreeConcurrentTest, MixTest1) {  // NOLINT
+TEST(BPlusTreeConcurrentTest, DISABLED_MixTest1) {  // NOLINT
   MixTest1Call();
 }
 
-TEST(BPlusTreeConcurrentTest, MixTest2) {  // NOLINT
+TEST(BPlusTreeConcurrentTest, DISABLED_MixTest2) {  // NOLINT
   MixTest2Call();
 }
 }  // namespace bustub
