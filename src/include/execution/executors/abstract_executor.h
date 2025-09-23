@@ -55,6 +55,7 @@ class AbstractExecutor {
 
  protected:
   /** The executor context in which the executor runs */
+  // 执行的上下文 各种算子可以访问的资源 例如bpm catalog等
   ExecutorContext *exec_ctx_;
 };
 }  // namespace bustub
