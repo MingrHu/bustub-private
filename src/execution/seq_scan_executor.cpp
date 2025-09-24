@@ -18,8 +18,8 @@ SeqScanExecutor::SeqScanExecutor(ExecutorContext *exec_ctx, const SeqScanPlanNod
  plan_ = plan;
 }
 
-void SeqScanExecutor::Init() { 
- exec_ctx_->
+void SeqScanExecutor::Init() {  
+ table_ = exec_ctx_->GetCatalog()->GetTable(plan_->GetTableOid());
 }
 
 auto SeqScanExecutor::Next(Tuple *tuple, RID *rid) -> bool { 
