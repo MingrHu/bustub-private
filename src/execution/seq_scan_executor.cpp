@@ -19,49 +19,49 @@
 
 namespace bustub {
 
-SeqScanExecutor::SeqScanExecutor(ExecutorContext *exec_ctx, const SeqScanPlanNode *plan) : AbstractExecutor(exec_ctx) {
- plan_ = plan;
-}
+SeqScanExecutor::SeqScanExecutor(ExecutorContext *exec_ctx, const SeqScanPlanNode *plan) : 
+AbstractExecutor(exec_ctx) ,plan_(plan){}
 
 void SeqScanExecutor::Init() {  
- table_info_ = exec_ctx_->GetCatalog()->GetTable(plan_->GetTableOid());
- BUSTUB_ENSURE(table_info_, "table_info is nullptr");
- table_iter_ = std::make_shared<TableIterator>(table_info_->table_->MakeEagerIterator());
+  table_info_ = exec_ctx_->GetCatalog()->GetTable(plan_->GetTableOid());
+  BUSTUB_ENSURE(table_info_, "table_info is nullptr");
+  table_iter_ = std::make_shared<TableIterator>(table_info_->table_->MakeIterator());
 }
 
 auto SeqScanExecutor::Next(Tuple *tuple, RID *rid) -> bool { 
  
- while(!table_iter_->IsEnd()){
-  // 获取当前表堆迭代器的元组相关信息
-  *rid = table_iter_->GetRID();
-  auto [meta,Tuple] = table_iter_->GetTuple();
+  while(!table_iter_->IsEnd()){
+    // 获取当前表堆迭代器的元组相关信息
+    *rid = table_iter_->GetRID();
+    auto [meta,Tuple] = table_iter_->GetTuple();
 
-  ++(*table_iter_);
+    ++(*table_iter_);
 
-  // 被删除的元组直接跳过
-  if(meta.is_deleted_){
-    continue;
-  }
-
-  if(plan_->filter_predicate_ != nullptr){
-    auto need_filt = plan_->filter_predicate_->Evaluate(&Tuple, plan_->OutputSchema());
-    if(need_filt.IsNull() || !need_filt.GetAs<bool>()){
-        continue;
+      // 被删除的元组直接跳过
+    if(meta.is_deleted_){
+      continue;
     }
-  }
 
-  // 把Tuple的值按照schema的模式传回tuple
-  std::vector<Value> res;
-  size_t size = plan_->OutputSchema().GetColumnCount();
-  res.reserve(size);
-  for(size_t i = 0;i < size;i++){
-    // 必须先按照表堆的格式获取数据 元组的列就是i即可
-    res.emplace_back(Tuple.GetValue(&table_info_->schema_,i));
-  }
-  *tuple = {res,&plan_->OutputSchema()};
-  return true;
- }   
- return false; 
+    if(plan_->filter_predicate_ != nullptr){
+      auto need_filt = plan_->filter_predicate_->Evaluate(&Tuple, plan_->OutputSchema());
+      if(need_filt.IsNull() || !need_filt.GetAs<bool>()){
+          continue;
+      }
+    }
+
+    // 把Tuple的值按照schema的模式传回tuple
+    std::vector<Value> res;
+    size_t size = plan_->OutputSchema().GetColumnCount();
+    res.reserve(size);
+    for(size_t i = 0;i < size;i++){
+      // 必须先按照表堆的格式获取数据 元组的列就是i即可
+      res.emplace_back(Tuple.GetValue(&table_info_->schema_,i));
+    }
+
+    *tuple = {res,&plan_->OutputSchema()};
+    return true;
+  }   
+  return false; 
 }
 
 }  // namespace bustub
