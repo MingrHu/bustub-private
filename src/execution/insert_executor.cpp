@@ -45,18 +45,19 @@ auto InsertExecutor::Next(Tuple *tuple, RID *rid) -> bool {
 
   while(child_executor_->Next(&tp, &rd)){
     TupleMeta tp_meta = {0,false};
-    auto insert_res = table_info->table_->InsertTuple(tp_meta, tp);
+    auto insert_rid = table_info->table_->InsertTuple(tp_meta, tp,exec_ctx_->GetLockManager(),
+    exec_ctx_->GetTransaction(),table_info->oid_);
     // 插入成功
-    if(insert_res.has_value()){
+    if(insert_rid.has_value()){
       insert_count += 1;
       for(auto& index_info:indexs_info){
         // 更新索引先必须获得索引的键 然后是插入的信息和事物上下文
         // 索引的键需要从元组中获取 构造方式一般是元组的几个属性列
-        // 因此这里传入的是元组的模式 键的模式 键对应属性列下标位置
+        // 因此这里传入的是元组的模式schema 键的模式key_schema 键对应属性列下标位置attrs
         auto index_key = tp.KeyFromTuple(table_info->schema_, index_info->key_schema_,
              index_info->index_->GetKeyAttrs());
         // 更新索引
-        index_info->index_->InsertEntry(index_key, rd, exec_ctx_->GetTransaction());
+        index_info->index_->InsertEntry(index_key, insert_rid.value(), exec_ctx_->GetTransaction());
       }
     }
   }

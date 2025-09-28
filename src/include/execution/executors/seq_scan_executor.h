@@ -53,7 +53,7 @@ class SeqScanExecutor : public AbstractExecutor {
  private:
   /** The sequential scan plan node to be executed */
   // 顺序查询的计划节点 包含一些必备的资源比如查询所需要的表oid
-  // 本质上也是属于查询计划的一部分
+  // 本质上也是属于查询计划的一部分 定义当前查询节点的输出格式等信息
   const SeqScanPlanNode *plan_;
   // 表堆 存储当前表堆的所有信息
   std::shared_ptr<TableInfo> table_info_;
