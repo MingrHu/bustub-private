@@ -15,6 +15,7 @@
 #include <memory>
 #include <vector>
 
+#include "catalog/catalog.h"
 #include "common/rid.h"
 #include "execution/executor_context.h"
 #include "execution/executors/abstract_executor.h"
@@ -55,9 +56,13 @@ class IndexScanExecutor : public AbstractExecutor {
     pred_keys_：用于点查找的常量值表达式向量（例如 WHERE 子句中的具体值）
   */
   const IndexScanPlanNode *plan_;
+
   bool point_search_;
   std::vector<RID> point_search_res_;
   IndexIterator<IntegerKeyType_BTree, IntegerValueType_BTree, IntegerComparatorType_BTree> iter_;
-  size_t cur_pos;
+  size_t cur_pos_;
+
+  std::shared_ptr<TableInfo> table_info_;
+  std::shared_ptr<IndexInfo> index_info_;
 };
 }  // namespace bustub

@@ -31,9 +31,15 @@ void UpdateExecutor::Init() {
   table_info_ = exec_ctx_->GetCatalog()->GetTable(plan_->GetTableOid()).get();
   child_executor_->Init();
   indexs_info_ = exec_ctx_->GetCatalog()->GetTableIndexes(table_info_->name_);
+  update_count_ = 0;
+  is_finished_ = false;
 }
 
 auto UpdateExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool { 
+
+  if(is_finished_){
+    return false;
+  }
 
   Tuple child_tp = {};
   RID child_rd = {};
@@ -59,10 +65,10 @@ auto UpdateExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {
       exec_ctx_->GetLockManager(),exec_ctx_->GetTransaction());
     // 先插入表堆 插入成功后更新索引
     if(new_rid.has_value()){
-
+      update_count_ += 1;
       old_meta.is_deleted_ = true;
       table_info_->table_->UpdateTupleMeta(old_meta, child_rd);
-
+      // 索引更新
       for(auto & index_info:indexs_info_){
         auto old_index_key= old_tuple.KeyFromTuple(table_info_->schema_, 
           index_info->key_schema_,index_info->index_->GetKeyAttrs());
@@ -72,13 +78,13 @@ auto UpdateExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {
           index_info->key_schema_,index_info->index_->GetKeyAttrs());
         index_info->index_->InsertEntry(new_index_key, new_rid.value(), exec_ctx_->GetTransaction());
       }
-      std::vector<Value> res_val;
-      res_val.emplace_back(TypeId::INTEGER,1);
-      *tuple ={res_val,&plan_->OutputSchema()};
-      return true;
     }
  }
-  return false;
+  std::vector<Value> res_val;
+  res_val.emplace_back(TypeId::INTEGER,update_count_);
+  *tuple ={res_val,&plan_->OutputSchema()};
+  is_finished_ = true;
+  return true;
 }
 
 }  // namespace bustub

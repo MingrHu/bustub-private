@@ -10,12 +10,13 @@
 
 namespace bustub {
 
+// 过滤下推
 auto Optimizer::OptimizeMergeFilterScan(const AbstractPlanNodeRef &plan) -> AbstractPlanNodeRef {
   std::vector<AbstractPlanNodeRef> children;
   for (const auto &child : plan->GetChildren()) {
     children.emplace_back(OptimizeMergeFilterScan(child));
   }
-
+  // 复制原有的计划节点作为新的计划节点 然后再该节点添加过滤优化
   auto optimized_plan = plan->CloneWithChildren(std::move(children));
 
   if (optimized_plan->GetType() == PlanType::Filter) {

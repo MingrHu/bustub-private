@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -70,5 +71,9 @@ class UpdateExecutor : public AbstractExecutor {
   std::unique_ptr<AbstractExecutor> child_executor_;
 
   std::vector<std::shared_ptr<IndexInfo>> indexs_info_;
+
+  int32_t update_count_;
+
+  bool is_finished_;
 };
 }  // namespace bustub

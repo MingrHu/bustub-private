@@ -27,6 +27,8 @@ void DeleteExecutor::Init() {
   is_finished_ = false;
   delete_count_ = 0;
   table_info_ = exec_ctx_->GetCatalog()->GetTable(plan_->GetTableOid());
+  child_executor_->Init();
+  BUSTUB_ENSURE(table_info_, "table_info is empty!");
 }
 
 auto DeleteExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool { 

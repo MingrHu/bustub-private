@@ -60,7 +60,7 @@ class SeqScanPlanNode : public AbstractPlanNode {
   /** The predicate to filter in seqscan.
    * For Fall 2023, We'll enable the MergeFilterScan rule, so we can further support index point lookup
    */
-  // 用于筛选符合条件的元组
+  // 过滤器
   AbstractExpressionRef filter_predicate_;
 
  protected:

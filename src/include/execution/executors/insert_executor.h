@@ -15,6 +15,7 @@
 #include <memory>
 #include <utility>
 
+#include "catalog/catalog.h"
 #include "execution/executor_context.h"
 #include "execution/executors/abstract_executor.h"
 #include "execution/plans/insert_plan.h"
@@ -59,7 +60,8 @@ class InsertExecutor : public AbstractExecutor {
   const InsertPlanNode *plan_;
   std::unique_ptr<AbstractExecutor> child_executor_;
   bool is_finished_;
-
+  std::shared_ptr<TableInfo> table_info_;
+  int32_t insert_count_;
 };
 
 }  // namespace bustub

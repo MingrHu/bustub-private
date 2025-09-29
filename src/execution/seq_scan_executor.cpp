@@ -53,9 +53,9 @@ auto SeqScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
     std::vector<Value> res;
     size_t size = plan_->OutputSchema().GetColumnCount();
     res.reserve(size);
-    for(size_t i = 0;i < size;i++){
+    for(size_t col_idx = 0;col_idx < size;col_idx++){
       // 必须先按照表堆的格式获取数据 元组的列就是i即可
-      res.emplace_back(Tuple.GetValue(&table_info_->schema_,i));
+      res.emplace_back(Tuple.GetValue(&table_info_->schema_,col_idx));
     }
 
     *tuple = {res,&plan_->OutputSchema()};
