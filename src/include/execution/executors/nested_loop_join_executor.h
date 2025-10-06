@@ -12,9 +12,11 @@
 
 #pragma once
 
+#include <cstddef>
 #include <memory>
 #include <utility>
 
+#include "common/rid.h"
 #include "execution/executor_context.h"
 #include "execution/executors/abstract_executor.h"
 #include "execution/plans/nested_loop_join_plan.h"
@@ -55,6 +57,21 @@ class NestedLoopJoinExecutor : public AbstractExecutor {
  private:
   /** The NestedLoopJoin plan node to be executed. */
   const NestedLoopJoinPlanNode *plan_;
+
+  Tuple left_tuple_{};
+
+  RID left_rid_{};
+
+  std::unique_ptr<AbstractExecutor> left_executor_;
+
+  std::unique_ptr<AbstractExecutor> right_executor_;
+  // 是否需要left的下一个元组
+  bool next_left_tuple_;
+  // 当前是否有匹配的
+  bool is_matched_;
+
+  auto Check(Tuple *left_tuple, Tuple *right_tuple) -> bool;
+
 };
 
 }  // namespace bustub

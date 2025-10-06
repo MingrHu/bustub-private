@@ -33,7 +33,7 @@ auto SeqScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
   while(!table_iter_->IsEnd()){
     // 获取当前表堆迭代器的元组相关信息
     *rid = table_iter_->GetRID();
-    auto [meta,Tuple] = table_iter_->GetTuple();
+    auto [meta,tp] = table_iter_->GetTuple();
 
     ++(*table_iter_);
 
@@ -43,7 +43,7 @@ auto SeqScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
     }
 
     if(plan_->filter_predicate_ != nullptr){
-      auto need_filt = plan_->filter_predicate_->Evaluate(&Tuple, plan_->OutputSchema());
+      auto need_filt = plan_->filter_predicate_->Evaluate(&tp, plan_->OutputSchema());
       if(need_filt.IsNull() || !need_filt.GetAs<bool>()){
           continue;
       }
@@ -54,8 +54,8 @@ auto SeqScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
     size_t size = plan_->OutputSchema().GetColumnCount();
     res.reserve(size);
     for(size_t col_idx = 0;col_idx < size;col_idx++){
-      // 必须先按照表堆的格式获取数据 元组的列就是i即可
-      res.emplace_back(Tuple.GetValue(&table_info_->schema_,col_idx));
+      // 必须先按照表堆的格式获取数据 元组的列就是col_idx即可
+      res.emplace_back(tp.GetValue(&table_info_->schema_,col_idx));
     }
 
     *tuple = {res,&plan_->OutputSchema()};
