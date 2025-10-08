@@ -65,7 +65,7 @@ class NestIndexJoinExecutor : public AbstractExecutor {
   size_t inner_idx_;
   // 当前的外表信息
   Tuple outer_tuple_{};
-
   RID outer_rid_{};  
+  
 };
 }  // namespace bustub

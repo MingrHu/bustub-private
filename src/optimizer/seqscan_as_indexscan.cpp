@@ -13,9 +13,13 @@
 #include "optimizer/optimizer.h"
 
 namespace bustub {
+// pred_keys: 谓词的常量值
+// filt_idx: 过滤的索引列位置
+// cur_exp: 当前的表达式节点
+// 本质上是根据谓词的常量值查找索引 需要先判断是否可以转为索引查找优化
 auto Check(std::vector<AbstractExpressionRef>& pred_keys,std::vector<uint32_t>& filt_idx,
   const AbstractExpressionRef& cur_exp)->bool{
-  // 
+  // 先尝试转为逻辑表达式
   const auto logic_expr = dynamic_cast<const LogicExpression*>(cur_exp.get());
   if(logic_expr == nullptr){
     auto comparison_expr = dynamic_cast<const ComparisonExpression*>(cur_exp.get());
@@ -78,8 +82,11 @@ auto Optimizer::OptimizeSeqScanAsIndexScan(const bustub::AbstractPlanNodeRef &pl
     auto indexs_info = catalog_.GetTableIndexes(table_info->name_);
     for(const auto& index_info:indexs_info){
       if(index_info->index_->GetKeyAttrs() == filt_idx){
-        return std::make_shared<IndexScanPlanNode>(seq_plan.output_schema_, seq_plan.GetTableOid(), index_info->index_oid_,
-                    seq_plan.filter_predicate_, pred_keys);
+        return std::make_shared<IndexScanPlanNode>(
+          seq_plan.output_schema_,
+          seq_plan.GetTableOid(), 
+          index_info->index_oid_,
+          seq_plan.filter_predicate_, pred_keys);
       }
     }
   }

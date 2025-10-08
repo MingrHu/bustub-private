@@ -13,6 +13,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -29,6 +30,27 @@ namespace bustub {
  * Page to hold the intermediate data for external merge sort.
  *
  * Only fixed-length data will be supported in Fall 2024.
+ *
+ * Sort Page Format:
+ *    12
+ * ----------
+ * | HEADER |
+ * ----------
+ * ----------------------------------------------
+ * |  Tuple(1)  |  Tuple(2)  | ... |  Tuple(n)  |
+ * ----------------------------------------------
+ *
+ * HEADER Format:
+ * ----------------------------------
+ * | size_ | maxsize_ | tuple_size_ |
+ * ----------------------------------
+ *
+ * Tuple Format (after serialization):
+ *    4    schema.GetInlinedStorageSize()
+ * --------------------------------------
+ * | size |            data             |
+ * --------------------------------------
+ *
  */
 class SortPage {
  public:
@@ -36,11 +58,26 @@ class SortPage {
    * TODO: Define and implement the methods for reading data from and writing data to the sort
    * page. Feel free to add other helper methods.
    */
+   // 底层资源需要删除拷贝复制等操作 保证内存安全
+   // 只能通过引用、指针或者移动访问获取
+   SortPage() = delete;
+   SortPage(const SortPage& other) = delete;
+   ~SortPage() = delete;
+
  private:
   /**
    * TODO: Define the private members. You may want to have some necessary metadata for
    * the sort page before the start of the actual data.
    */
+   // 当前存储的所有元组大小
+   uint32_t size_;
+   // 当前页面最多能存储的元组大小
+   uint32_t max_size_;
+   // 一个元组的大小
+   uint32_t tuple_size_;
+
+   char data_[];
+   // std::vector<char> data_
 };
 
 /**

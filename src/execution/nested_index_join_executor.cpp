@@ -33,9 +33,8 @@ void NestIndexJoinExecutor::Init() {
 
 auto NestIndexJoinExecutor::Next(Tuple *tuple, RID *rid) -> bool { 
 
-  std::vector<Value> values;
-
   while(!next_outer_tuple_ || child_executor_->Next(&outer_tuple_, &outer_rid_)){
+    std::vector<Value> values;
     // 如果移动到了下一个外表元组
     if(next_outer_tuple_){
       // 定义构成索引的元组值
