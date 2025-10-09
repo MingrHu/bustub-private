@@ -11,7 +11,9 @@
 //===----------------------------------------------------------------------===//
 
 #include "execution/execution_common.h"
+#include <cstdint>
 
+#include "binder/bound_order_by.h"
 #include "catalog/catalog.h"
 #include "common/macros.h"
 #include "concurrency/transaction_manager.h"
@@ -21,10 +23,52 @@
 namespace bustub {
 
 TupleComparator::TupleComparator(std::vector<OrderBy> order_bys) : order_bys_(std::move(order_bys)) {}
-
-auto TupleComparator::operator()(const SortEntry &entry_a, const SortEntry &entry_b) const -> bool { return false; }
+// order_bys的组成
+// std::vector<OrderBy> order_bys = {
+//     {0, OrderByType::ASC},   // 第0列（age）升序
+//     {1, OrderByType::DESC}   // 第1列（name）降序
+// };
+// 在 C++ 排序规则中：
+// 如果 comp(a, b) == false 且 comp(b, a) == false 则 a 和 b 被视为等价（equivalent） 排序算法不会交换它们
+// 在序列中后一个的元素会被放在比较函数前一个位置 前一个元素会被放在比较函数的后一个位置
+// 如果 operator()(a, b) == true，表示 a 应该排在 b 前面（即 a < b）。
+// 如果 operator()(a, b) == false，表示 a 应该排在 b 后面 或 顺序不变
+auto TupleComparator::operator()(const SortEntry &entry_a, const SortEntry &entry_b) const -> bool {
+  auto keya = entry_a.first;
+  auto keyb = entry_b.first;
+  uint32_t idx = 0;
+  for(const auto& exp:order_bys_){
+    BUSTUB_ENSURE(idx < order_bys_.size(), "Order by idx out of range!\n");
+    switch (exp.first) {
+      case OrderByType::INVALID:
+        BUSTUB_ENSURE(exp.first != OrderByType::INVALID, "Order by rule is invalid!\n");
+      case OrderByType::DEFAULT:
+      case OrderByType::ASC:
+        // 如果是升序但a < b 则返回true
+        if(keya[idx].CompareLessThan(keyb[idx]) == CmpBool::CmpTrue){
+          return true;
+        }
+        else if(keya[idx].CompareGreaterThan(keyb[idx]) == CmpBool::CmpTrue){
+          return false;
+        }
+        break;
+      case OrderByType::DESC:
+        // 如果是降序但a < b 则返回false
+        if(keya[idx].CompareLessThan(keyb[idx]) == CmpBool::CmpTrue){ 
+          return false;
+        }
+        else if(keya[idx].CompareGreaterThan(keyb[idx]) == CmpBool::CmpTrue){
+          return true;
+        }
+        break;  
+    }
+    idx += 1;
+  }
+  return false; 
+}
 
 auto GenerateSortKey(const Tuple &tuple, const std::vector<OrderBy> &order_bys, const Schema &schema) -> SortKey {
+
   return {};
 }
 
