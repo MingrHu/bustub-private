@@ -59,7 +59,7 @@ namespace bustub {
 // Page* page = buffer_pool_manager_->NewPage();
 // WritePageGuard guard(page);
 // SortPage* sort_page = guard.AsMut<SortPage>();
-// sort_page->Init(row_num, row_size); // 初始化元数据和 data_
+// sort_page->Init(tuple_size); // 初始化元数据和 data_
 #define SORTPAGE_HEADER_SIZE 12
 #define META_SIZE 4
 class SortPage {
@@ -77,9 +77,9 @@ class SortPage {
   ~SortPage() = delete;
 
   // 初始化
-  void Init(uint32_t row_num,uint32_t row_size){
+  void Init(uint32_t tuple_size){
     size_ = 0;
-    tuple_size_ = row_num * row_size + META_SIZE;
+    tuple_size_ =  tuple_size + META_SIZE;
     max_size_ = (BUSTUB_PAGE_SIZE - SORTPAGE_HEADER_SIZE) / tuple_size_;
   };
   
@@ -139,13 +139,13 @@ class MergeSortRun {
 
   MergeSortRun(std::vector<page_id_t> pages, BufferPoolManager *bpm) : pages_(std::move(pages)), bpm_(bpm) {}
   
-  MergeSortRun(MergeSortRun &&that):pages_(std::move(that.pages_)),bpm_(that.bpm_){
+  MergeSortRun(MergeSortRun &&that)noexcept:pages_(std::move(that.pages_)),bpm_(that.bpm_){
     that.bpm_ = nullptr;
   }
 
   MergeSortRun(const MergeSortRun &that) = delete;
 
-  MergeSortRun &operator=(MergeSortRun &&that) noexcept {
+  auto operator=(MergeSortRun &&that)noexcept->MergeSortRun & {
     if (this != &that) {
       pages_ = std::move(that.pages_);
       bpm_ = that.bpm_;
@@ -154,9 +154,11 @@ class MergeSortRun {
     return *this;
   }
 
-  MergeSortRun &operator=(const MergeSortRun &) = delete;
+  auto operator=(const MergeSortRun &)->MergeSortRun& = delete;
 
   auto GetPageCount() -> size_t { return pages_.size(); }
+
+  auto GetPages()const->const std::vector<page_id_t>&{ return pages_;}
 
   /** Iterator for iterating on the sorted tuples in one run. */
   class Iterator {
@@ -166,13 +168,13 @@ class MergeSortRun {
     Iterator() = default;
 
     // 使用noexcept保证异常安全 要么全成功要么全失败
-    Iterator& operator=(Iterator &&that)noexcept{
+     auto operator=(Iterator &&that)noexcept ->Iterator&{
       if(&that != this){
         cur_page_ = std::move(that.cur_page_);
         page_idx_ = that.page_idx_;
         is_valid_ = that.is_valid_;
         that.is_valid_ = false;
-        run_ = std::move(that.run_);
+        run_ = that.run_;
         that.run_ = nullptr;
         tuple_idx_ = that.tuple_idx_;
       }
@@ -184,7 +186,7 @@ class MergeSortRun {
       page_idx_ = that.page_idx_;
       is_valid_ = that.is_valid_;
       that.is_valid_ = false;
-      run_ = std::move(that.run_);
+      run_ = that.run_;
       that.run_ = nullptr;
       tuple_idx_ = that.tuple_idx_;
     }
@@ -201,7 +203,7 @@ class MergeSortRun {
       }
       // cosnt对象只能访问const成员函数
       // 保证不能修改对象的成员
-      const SortPage* sort_page = cur_page_.As<SortPage>();
+      const auto* sort_page = cur_page_.As<SortPage>();
       tuple_idx_ += 1;
       // 超过最大页面位置
       if(tuple_idx_ == sort_page->GetMaxSize()){
@@ -228,7 +230,7 @@ class MergeSortRun {
      */
     auto operator*() -> Tuple {
       BUSTUB_ENSURE(is_valid_, "Iterator out of range!\n");
-      const SortPage* sort_page = cur_page_.As<SortPage>();
+      const auto* sort_page = cur_page_.As<SortPage>();
       return sort_page->GetTupleAt(tuple_idx_);
     }
 
@@ -290,7 +292,7 @@ class MergeSortRun {
    *
    * TODO: Implement this method.
    */
-  auto End() -> Iterator { return Iterator(this,false); }
+  auto End() -> Iterator { return {this,false}; }
 
  private:
   /** The page IDs of the sort pages that store the sorted tuples. */
@@ -336,7 +338,21 @@ class ExternalMergeSortExecutor : public AbstractExecutor {
 
   std::unique_ptr<AbstractExecutor> child_executor_;
 
+  std::vector<MergeSortRun> runs_;
+  
+  // 记录当前遍历到的runs_下标
+  uint32_t runs_idx_;
+
+  MergeSortRun::Iterator iter_;
+
   /** TODO: You will want to add your own private members here. */
+  void CreateInitRuns();
+
+  void TwoWaysMerge();
+
+  void SolveRemain(MergeSortRun::Iterator& iter,const MergeSortRun::Iterator &iter_end,
+    SortPage* &sort_page_store,uint32_t cur_idx,std::vector<page_id_t>& pages,WritePageGuard& new_page_guard);
+
 };
 
 }  // namespace bustub
