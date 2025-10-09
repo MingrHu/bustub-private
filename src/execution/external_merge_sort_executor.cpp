@@ -83,8 +83,9 @@ void ExternalMergeSortExecutor<K>::CreateInitRuns(){
     // 一个run包含的元组数量为sort_page->GetMaxSize() * max_pages
     for( ;tuple_idx < sort_page->GetMaxSize() * max_pages;tuple_idx++){
       if(child_executor_->Next(&tuple, &rid)){
-        entries.emplace_back(GenerateSortKey(tuple, plan_->GetOrderBy(), 
-        child_executor_->GetOutputSchema()),tuple);
+        // std::string str = tuple.ToString(&child_executor_->GetOutputSchema());
+        // std::cout<< str<<std::endl;
+        entries.emplace_back(GenerateSortKey(tuple, plan_->GetOrderBy(), GetOutputSchema()),tuple);
       }
       else{
         break;
@@ -101,6 +102,12 @@ void ExternalMergeSortExecutor<K>::CreateInitRuns(){
     // 执行排序操作 对所有的元组先排序再按顺序放入run里面
     // run里面的SortPage都是排好序的
     std::sort(entries.begin(),entries.end(),cmp_);
+
+    for(const auto& p:entries){
+      std::string str = p.second.ToString(&child_executor_->GetOutputSchema());
+      std::cout<< str<<std::endl;
+    }
+
     for(uint32_t idx = 0,cnt = 0;idx < entries.size();idx++,cnt++){
       // 当一个页面满了的时候切换下一个页面
       if(cnt == sort_page->GetMaxSize()){
@@ -126,7 +133,7 @@ void ExternalMergeSortExecutor<K>::TwoWaysMerge(){
     uint32_t size = runs_.size();
     for(uint32_t idx = 0;idx < size;idx += 2){
       if(idx == size - 1){
-        new_runs.emplace_back(new_runs[idx]);
+        new_runs.emplace_back(std::move(new_runs[idx]));
         break;
       }
 
