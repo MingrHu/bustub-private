@@ -85,37 +85,34 @@ class SimpleAggregationHashTable {
           break;
 
         case AggregationType::CountAggregate:
-          if(!input.aggregates_[i].IsNull()){
-            if(result->aggregates_[i].IsNull()){
+          if (!input.aggregates_[i].IsNull()) {
+            if (result->aggregates_[i].IsNull()) {
               result->aggregates_[i] = ValueFactory::GetIntegerValue(1);
-            } 
-            else{
+            } else {
               int org_val = result->aggregates_[i].GetAs<int>();
               result->aggregates_[i] = ValueFactory::GetIntegerValue(1 + org_val);
-            }           
+            }
           }
           break;
-        
+
         case AggregationType::SumAggregate:
-          if(!input.aggregates_[i].IsNull()){
+          if (!input.aggregates_[i].IsNull()) {
             val = input.aggregates_[i].GetAs<int>();
-            if(result->aggregates_[i].IsNull()){
+            if (result->aggregates_[i].IsNull()) {
               result->aggregates_[i] = ValueFactory::GetIntegerValue(val);
-            } 
-            else{
+            } else {
               int org_val = result->aggregates_[i].GetAs<int>();
               result->aggregates_[i] = ValueFactory::GetIntegerValue(val + org_val);
             }
-          } 
+          }
           break;
 
         case AggregationType::MinAggregate:
-          if(!input.aggregates_[i].IsNull()){
+          if (!input.aggregates_[i].IsNull()) {
             val = input.aggregates_[i].GetAs<int>();
-            if(result->aggregates_[i].IsNull()){
+            if (result->aggregates_[i].IsNull()) {
               result->aggregates_[i] = ValueFactory::GetIntegerValue(val);
-            } 
-            else{
+            } else {
               int org_val = result->aggregates_[i].GetAs<int>();
               val = val < org_val ? val : org_val;
               result->aggregates_[i] = ValueFactory::GetIntegerValue(val);
@@ -124,12 +121,11 @@ class SimpleAggregationHashTable {
           break;
 
         case AggregationType::MaxAggregate:
-          if(!input.aggregates_[i].IsNull()){
+          if (!input.aggregates_[i].IsNull()) {
             val = input.aggregates_[i].GetAs<int>();
-            if(result->aggregates_[i].IsNull()){
+            if (result->aggregates_[i].IsNull()) {
               result->aggregates_[i] = ValueFactory::GetIntegerValue(val);
-            } 
-            else{
+            } else {
               int org_val = result->aggregates_[i].GetAs<int>();
               val = val > org_val ? val : org_val;
               result->aggregates_[i] = ValueFactory::GetIntegerValue(val);
@@ -152,10 +148,7 @@ class SimpleAggregationHashTable {
     CombineAggregateValues(&ht_[agg_key], agg_val);
   }
 
-  void InsertInitialKeyVal(){
-    ht_.insert({{std::vector<Value>{}}, 
-      GenerateInitialAggregateValue()});
-  }
+  void InsertInitialKeyVal() { ht_.insert({{std::vector<Value>{}}, GenerateInitialAggregateValue()}); }
   /**
    * Clear the hash table
    */

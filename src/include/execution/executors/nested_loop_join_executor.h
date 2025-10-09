@@ -71,7 +71,6 @@ class NestedLoopJoinExecutor : public AbstractExecutor {
   bool is_matched_;
 
   auto Check(Tuple *left_tuple, Tuple *right_tuple) -> bool;
-
 };
 
 }  // namespace bustub

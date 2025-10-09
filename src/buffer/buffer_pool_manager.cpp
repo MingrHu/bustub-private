@@ -160,41 +160,32 @@ auto BufferPoolManager::NewPage() -> page_id_t {  // 只负责分配新的页id 
  */
 auto BufferPoolManager::DeletePage(page_id_t page_id) -> bool {
   // LOG_DEBUG("Call function:DeletePage! pageid = %d\n", page_id);
-  auto num = GetPinCount(page_id);
-  // 不存在
-  if (!num.has_value()) {
-    return true;
-  }
-  // 存在但被占用
-  if (num.value() != 0) {
-    return false;
-  }
-
+  // 检查内存中是否存在且被占用
+  // 否则是内存中不存在但可能存在于磁盘上的
   std::scoped_lock latch(*bpm_latch_);
   frame_id_t fid = INVALID_FRAME_ID;
   if (page_table_.find(page_id) != page_table_.end()) {
     fid = page_table_[page_id];
+    auto curframe = frames_[fid];
+    // 有线程占用
+    if (curframe->pin_count_.load() != 0) {
+      return false;
+    }
+    if (curframe->pgid_ == page_id) {
+      // 清除该页面在缓存中的所有相关信息
+      disk_manger_proxy_->Deletepagecache(curframe);
+      replacer_->Remove(fid);
+      // 重置绑定的帧信息
+      curframe->Reset();
+      free_frames_.push_back(fid);
+    }
+    // 内存页表中删除
     page_table_.erase(page_id);
   }
-  // 页刚分配 没有帧
-  if (fid == INVALID_FRAME_ID) {
-    return false;
-  }
-
-  auto curframe = frames_[fid];
-  if (curframe->pgid_ == page_id) {
-    // 清除该页面所有相关信息
-    // 保留帧ID
-    disk_manger_proxy_->Deletepagecache(curframe);
-    replacer_->Remove(fid);
-    curframe->Reset();
-    free_frames_.push_back(fid);
-  }
-
+  // 删除磁盘上的物理页
   disk_scheduler_->DeallocatePage(page_id);
 
   // LOG_DEBUG("Call function:Success DeletePage! pageid = %d\n", page_id);
-  // 从磁盘上删除页
   return true;
 }
 

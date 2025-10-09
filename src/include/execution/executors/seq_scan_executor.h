@@ -43,8 +43,8 @@ class SeqScanExecutor : public AbstractExecutor {
    * @param[out] rid The next tuple RID produced by the scan
    * @return `true` if a tuple was produced, `false` if there are no more tuples
    */
-   // 顺序全表扫
-   // 类似于yeild操作
+  // 顺序全表扫
+  // 类似于yeild操作
   auto Next(Tuple *tuple, RID *rid) -> bool override;
 
   /** @return The output schema for the sequential scan */
@@ -59,6 +59,5 @@ class SeqScanExecutor : public AbstractExecutor {
   std::shared_ptr<TableInfo> table_info_;
   // 本质上是一个cursor 指向当前的元组 并可以按顺序访问下一个元组 无论是否在一个页上
   std::shared_ptr<TableIterator> table_iter_;
-
 };
 }  // namespace bustub

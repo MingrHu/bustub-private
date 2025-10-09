@@ -37,7 +37,7 @@ auto TupleComparator::operator()(const SortEntry &entry_a, const SortEntry &entr
   auto keya = entry_a.first;
   auto keyb = entry_b.first;
   uint32_t idx = 0;
-  for(const auto& exp:order_bys_){
+  for (const auto &exp : order_bys_) {
     BUSTUB_ENSURE(idx < order_bys_.size(), "Order by idx out of range!\n");
     switch (exp.first) {
       case OrderByType::INVALID:
@@ -45,31 +45,32 @@ auto TupleComparator::operator()(const SortEntry &entry_a, const SortEntry &entr
       case OrderByType::DEFAULT:
       case OrderByType::ASC:
         // 如果是升序但a < b 则返回true
-        if(keya[idx].CompareLessThan(keyb[idx]) == CmpBool::CmpTrue){
+        if (keya[idx].CompareLessThan(keyb[idx]) == CmpBool::CmpTrue) {
           return true;
-        }
-        else if(keya[idx].CompareGreaterThan(keyb[idx]) == CmpBool::CmpTrue){
+        } else if (keya[idx].CompareGreaterThan(keyb[idx]) == CmpBool::CmpTrue) {
           return false;
         }
         break;
       case OrderByType::DESC:
         // 如果是降序但a < b 则返回false
-        if(keya[idx].CompareLessThan(keyb[idx]) == CmpBool::CmpTrue){ 
+        if (keya[idx].CompareLessThan(keyb[idx]) == CmpBool::CmpTrue) {
           return false;
-        }
-        else if(keya[idx].CompareGreaterThan(keyb[idx]) == CmpBool::CmpTrue){
+        } else if (keya[idx].CompareGreaterThan(keyb[idx]) == CmpBool::CmpTrue) {
           return true;
         }
-        break;  
+        break;
     }
     idx += 1;
   }
-  return false; 
+  return false;
 }
 
 auto GenerateSortKey(const Tuple &tuple, const std::vector<OrderBy> &order_bys, const Schema &schema) -> SortKey {
-
-  return {};
+  SortKey sort_key{};
+  for (const auto &expr : order_bys) {
+    sort_key.emplace_back(expr.second->Evaluate(&tuple, schema));
+  }
+  return sort_key;
 }
 
 /**

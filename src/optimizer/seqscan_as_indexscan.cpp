@@ -17,43 +17,41 @@ namespace bustub {
 // filt_idx: 过滤的索引列位置
 // cur_exp: 当前的表达式节点
 // 本质上是根据谓词的常量值查找索引 需要先判断是否可以转为索引查找优化
-auto Check(std::vector<AbstractExpressionRef>& pred_keys,std::vector<uint32_t>& filt_idx,
-  const AbstractExpressionRef& cur_exp)->bool{
+auto Check(std::vector<AbstractExpressionRef> &pred_keys, std::vector<uint32_t> &filt_idx,
+           const AbstractExpressionRef &cur_exp) -> bool {
   // 先尝试转为逻辑表达式
-  const auto logic_expr = dynamic_cast<const LogicExpression*>(cur_exp.get());
-  if(logic_expr == nullptr){
-    auto comparison_expr = dynamic_cast<const ComparisonExpression*>(cur_exp.get());
+  const auto logic_expr = dynamic_cast<const LogicExpression *>(cur_exp.get());
+  if (logic_expr == nullptr) {
+    auto comparison_expr = dynamic_cast<const ComparisonExpression *>(cur_exp.get());
     // 当前的比较表达式不合法
-    if(comparison_expr == nullptr || comparison_expr->comp_type_ !=ComparisonType::Equal){
+    if (comparison_expr == nullptr || comparison_expr->comp_type_ != ComparisonType::Equal) {
       return false;
     }
     // 尝试获取其表达式的常量值
     // 先反着获取其表达式的情况
-    auto col_val = dynamic_cast<const ColumnValueExpression*>(cur_exp->GetChildAt(0).get());
-    if(col_val == nullptr){
-      col_val = dynamic_cast<const ColumnValueExpression*>(cur_exp->GetChildAt(1).get());
+    auto col_val = dynamic_cast<const ColumnValueExpression *>(cur_exp->GetChildAt(0).get());
+    if (col_val == nullptr) {
+      col_val = dynamic_cast<const ColumnValueExpression *>(cur_exp->GetChildAt(1).get());
       pred_keys.emplace_back(comparison_expr->GetChildAt(0));
-    }
-    else{
+    } else {
       pred_keys.emplace_back(comparison_expr->GetChildAt(1));
     }
     // 这里检查的原因是索引只有一列 那么必须相同且只有一个
-    if(filt_idx.empty()){
+    if (filt_idx.empty()) {
       filt_idx.emplace_back(col_val->GetColIdx());
     }
     // 如果任何一个子表达式的列和已有的不同 直接返回false
-    else if(filt_idx[0] != col_val->GetColIdx()){
+    else if (filt_idx[0] != col_val->GetColIdx()) {
       return false;
     }
-    
+
     return true;
   }
 
-  if(logic_expr->logic_type_ != LogicType::Or){
+  if (logic_expr->logic_type_ != LogicType::Or) {
     return false;
   }
-  return Check(pred_keys, filt_idx, logic_expr->GetChildAt(0)) &&
-         Check(pred_keys, filt_idx, logic_expr->GetChildAt(1));
+  return Check(pred_keys, filt_idx, logic_expr->GetChildAt(0)) && Check(pred_keys, filt_idx, logic_expr->GetChildAt(1));
 }
 
 auto Optimizer::OptimizeSeqScanAsIndexScan(const bustub::AbstractPlanNodeRef &plan) -> AbstractPlanNodeRef {
@@ -66,27 +64,24 @@ auto Optimizer::OptimizeSeqScanAsIndexScan(const bustub::AbstractPlanNodeRef &pl
   // 拿到子计划节点
   auto optimized_plan = plan->CloneWithChildren(std::move(children));
   // 看子计划是否为顺序扫描
-  if(optimized_plan->GetType() == PlanType::SeqScan){
+  if (optimized_plan->GetType() == PlanType::SeqScan) {
     const auto &seq_plan = dynamic_cast<const SeqScanPlanNode &>(*optimized_plan);
-    if(seq_plan.filter_predicate_ == nullptr){
+    if (seq_plan.filter_predicate_ == nullptr) {
       return optimized_plan;
     }
 
     std::vector<AbstractExpressionRef> pred_keys;
     std::vector<uint32_t> filt_idx;
-    if(!Check(pred_keys,filt_idx,seq_plan.filter_predicate_)){
+    if (!Check(pred_keys, filt_idx, seq_plan.filter_predicate_)) {
       return optimized_plan;
     }
     // 获取对应的索引信息
     auto table_info = catalog_.GetTable(seq_plan.GetTableOid());
     auto indexs_info = catalog_.GetTableIndexes(table_info->name_);
-    for(const auto& index_info:indexs_info){
-      if(index_info->index_->GetKeyAttrs() == filt_idx){
-        return std::make_shared<IndexScanPlanNode>(
-          seq_plan.output_schema_,
-          seq_plan.GetTableOid(), 
-          index_info->index_oid_,
-          seq_plan.filter_predicate_, pred_keys);
+    for (const auto &index_info : indexs_info) {
+      if (index_info->index_->GetKeyAttrs() == filt_idx) {
+        return std::make_shared<IndexScanPlanNode>(seq_plan.output_schema_, seq_plan.GetTableOid(),
+                                                   index_info->index_oid_, seq_plan.filter_predicate_, pred_keys);
       }
     }
   }

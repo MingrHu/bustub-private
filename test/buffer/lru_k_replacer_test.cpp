@@ -5,10 +5,10 @@
 #include "buffer/lru_k_replacer.h"
 
 #include <cstdio>
-#include <unordered_set>
-#include "common/logger.h"
 #include <thread>  // NOLINT
+#include <unordered_set>
 #include <vector>
+#include "common/logger.h"
 
 #include "gtest/gtest.h"
 
@@ -124,40 +124,37 @@ TEST(LRUKReplacerTest, BenchMarkTest) {
   int threadnum = 8;
   threads_record.reserve(threadnum);
   LOG_DEBUG("INSERT START\n");
-  for(int i = 0;i < 8;i++){
-    threads_record.emplace_back([&,i](){
-      for(auto times = 0;times < max_frames;times++){
-        for(frame_id_t fid = i * (max_frames / threadnum);fid < max_frames / threadnum * (i + 1);fid++){
+  for (int i = 0; i < 8; i++) {
+    threads_record.emplace_back([&, i]() {
+      for (auto times = 0; times < max_frames; times++) {
+        for (frame_id_t fid = i * (max_frames / threadnum); fid < max_frames / threadnum * (i + 1); fid++) {
           lru_replacer.RecordAccess(fid);
         }
-          
       }
     });
   }
 
-  for(auto &t:threads_record){
+  for (auto &t : threads_record) {
     t.join();
   }
   LOG_DEBUG("INSERT END\n");
 
   std::unordered_set<frame_id_t> evict_record;
-  for(auto fid = 0;fid < max_frames;fid++){
+  for (auto fid = 0; fid < max_frames; fid++) {
     frame_id_t val = fid % rand();
     lru_replacer.SetEvictable(val, true);
     evict_record.insert(val);
   }
 
-  for(size_t i = 0;i <evict_record.size();i++){
+  for (size_t i = 0; i < evict_record.size(); i++) {
     lru_replacer.Evict();
     ASSERT_EQ(evict_record.size() - i - 1, lru_replacer.Size());
   }
 
-  for(const auto& v:evict_record){
+  for (const auto &v : evict_record) {
     lru_replacer.RecordAccess(v);
   }
   ASSERT_EQ(0, lru_replacer.Size());
-
 }
-
 
 }  // namespace bustub
