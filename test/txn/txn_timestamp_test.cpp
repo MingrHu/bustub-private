@@ -16,7 +16,7 @@
 
 namespace bustub {
 
-TEST(TxnTsTest, DISABLED_WatermarkPerformance) {  // NOLINT
+TEST(TxnTsTest, WatermarkPerformance) {  // NOLINT
   const int txn_n = 1000000;
   {
     auto watermark = Watermark(0);
@@ -24,6 +24,7 @@ TEST(TxnTsTest, DISABLED_WatermarkPerformance) {  // NOLINT
       watermark.AddTxn(i);
       ASSERT_EQ(watermark.GetWatermark(), 0);
     }
+    // std::cout<<watermark.pq_.top()<<std::endl;
     for (int i = 0; i < txn_n; i++) {
       watermark.UpdateCommitTs(i + 1);
       watermark.RemoveTxn(i);
@@ -48,7 +49,7 @@ TEST(TxnTsTest, DISABLED_WatermarkPerformance) {  // NOLINT
   }
 }
 
-TEST(TxnTsTest, DISABLED_TimestampTracking) {  // NOLINT
+TEST(TxnTsTest, TimestampTracking) {  // NOLINT
   auto bustub = std::make_unique<BusTubInstance>();
 
   auto txn0 = bustub->txn_manager_->Begin();

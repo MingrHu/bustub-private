@@ -57,6 +57,9 @@ auto ReconstructTuple(const Schema *schema, const Tuple &base_tuple, const Tuple
 
 auto CollectUndoLogs(RID rid, const TupleMeta &base_meta, const Tuple &base_tuple, std::optional<UndoLink> undo_link,
                      Transaction *txn, TransactionManager *txn_mgr) -> std::optional<std::vector<UndoLog>>;
+                
+auto AcquireSpecTuple(const Schema& schema,const RID& rid,TableHeap* table_heap,
+  Transaction* txn,TransactionManager* txn_manager)->std::optional<Tuple>;
 
 auto GenerateNewUndoLog(const Schema *schema, const Tuple *base_tuple, const Tuple *target_tuple, timestamp_t ts,
                         UndoLink prev_version) -> UndoLog;
@@ -67,6 +70,10 @@ auto GenerateUpdatedUndoLog(const Schema *schema, const Tuple *base_tuple, const
 void TxnMgrDbg(const std::string &info, TransactionManager *txn_mgr, const TableInfo *table_info,
                TableHeap *table_heap);
 
+auto UndoLogToString(const Schema *schema, const UndoLog &log) -> std::string;
+
+// 获取日志的修改列对应的字段
+auto GetUndoLogSchema(const Schema *schema, const UndoLog &log) -> Schema;
 // TODO(P4): Add new functions as needed... You are likely need to define some more functions.
 //
 // To give you a sense of what can be shared across executors / transaction manager, here are the

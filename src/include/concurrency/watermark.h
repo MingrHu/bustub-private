@@ -1,6 +1,10 @@
 #pragma once
 
+#include <functional>
+#include <queue>
 #include <unordered_map>
+#include <map>
+#include <utility>
 
 #include "concurrency/transaction.h"
 #include "storage/table/tuple.h"
@@ -35,6 +39,8 @@ class Watermark {
   timestamp_t watermark_;
 
   std::unordered_map<timestamp_t, int> current_reads_;
+  // 追踪活跃的事务中最小的时间戳
+  std::priority_queue<timestamp_t,std::vector<timestamp_t>,std::greater<timestamp_t>> pq_;
 };
 
 };  // namespace bustub

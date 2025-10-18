@@ -43,7 +43,8 @@ auto TransactionManager::Begin(IsolationLevel isolation_level) -> Transaction * 
   txn_map_.insert(std::make_pair(txn_id, std::move(txn)));
 
   // TODO(fall2023): set the timestamps here. Watermark updated below.
-
+  // 读时间戳是当前提交事务的最大时间戳
+  txn_ref->read_ts_ = last_commit_ts_.load();
   running_txns_.AddTxn(txn_ref->read_ts_);
   return txn_ref;
 }
@@ -72,7 +73,8 @@ auto TransactionManager::Commit(Transaction *txn) -> bool {
   std::unique_lock<std::shared_mutex> lck(txn_map_mutex_);
 
   // TODO(fall2023): set commit timestamp + update last committed timestamp here.
-
+  last_commit_ts_.fetch_add(1);
+  txn->commit_ts_ = last_commit_ts_.load();
   txn->state_ = TransactionState::COMMITTED;
   running_txns_.UpdateCommitTs(txn->commit_ts_);
   running_txns_.RemoveTxn(txn->read_ts_);
