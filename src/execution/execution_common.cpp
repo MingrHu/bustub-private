@@ -12,6 +12,7 @@
 
 #include "execution/execution_common.h"
 #include <cstdint>
+#include <iostream>
 #include <optional>
 #include <sstream>
 #include <vector>
@@ -27,6 +28,7 @@
 #include "storage/table/table_heap.h"
 #include "storage/table/tuple.h"
 #include "type/type_id.h"
+#include "type/value.h"
 #include "type/value_factory.h"
 
 namespace bustub {
@@ -207,7 +209,35 @@ auto AcquireSpecTuple(const Schema& schema,const RID& rid,TableHeap* table_heap,
  */
 auto GenerateNewUndoLog(const Schema *schema, const Tuple *base_tuple, const Tuple *target_tuple, timestamp_t ts,
                         UndoLink prev_version) -> UndoLog {
-  UNIMPLEMENTED("not implemented");
+  // target_tuple其实就是最新的元组 而base_tuple就是后续需要还原回去的元组
+  // Undolog的tuple就是记录差异的tuple 本方法可以直接根据最原始的元组进行差异日志
+  // 当前的delete = true可以认为当前元组通过删除得到的base_tuple
+  std::vector<bool> modfileds(schema->GetColumnCount(),true);
+  // case1 当前元组被删除 当前不记录 
+  if(target_tuple == nullptr){
+    return UndoLog{false,modfileds,*base_tuple,ts,prev_version};
+  }
+  // case2 当前对过去是一个删除操作
+  if(base_tuple == nullptr){
+    return UndoLog{true,{},{},ts,prev_version};
+  }
+  // case3
+  std::vector<Value> val;
+  std::vector<uint32_t> colums;
+  for(uint32_t col = 0;col < schema->GetColumnCount();col++){
+    auto base_val = base_tuple->GetValue(schema, col);
+    auto tar_val = target_tuple->GetValue(schema, col);
+    if(!base_val.CompareExactlyEquals(tar_val)){
+      val.emplace_back(base_val);
+      colums.emplace_back(col);
+    }
+    else{
+      modfileds[col] = false;
+    }
+  }
+  Schema sc{Schema::CopySchema(schema, colums)};
+  Tuple res_tuple = {std::move(val),&sc};
+  return UndoLog{false,std::move(modfileds),res_tuple,ts,prev_version};
 }
 
 /**
@@ -222,7 +252,65 @@ auto GenerateNewUndoLog(const Schema *schema, const Tuple *base_tuple, const Tup
  */
 auto GenerateUpdatedUndoLog(const Schema *schema, const Tuple *base_tuple, const Tuple *target_tuple,
                             const UndoLog &log) -> UndoLog {
-  UNIMPLEMENTED("not implemented");
+  // 如果base_tuple == nullptr说明其日志是一个全部修改的
+  // 不需要考虑这个中间状态 直接返回即可
+  if(log.is_deleted_ || base_tuple == nullptr){
+    return log;
+  }
+  uint32_t colcnt = schema->GetColumnCount();
+  std::vector<Value> values;
+  values.reserve(colcnt);
+  std::vector<uint32_t> colums;
+  colums.reserve(colcnt);
+  std::vector<bool> modfileds(colcnt,true);
+  
+  // 获取上一个修改字段元组的schema
+  auto org_log_schema = GetUndoLogSchema(schema,log);
+
+  // 如果当前的操作是删除操作
+  if(target_tuple == nullptr){
+    uint32_t ptr = 0;
+    for(uint32_t col = 0;col < colcnt;col++){
+      // 这里分两种情况 由于重建需要根据删除的元组去重建过去的
+      // 1.如果过去的日志中某列是修改得到的 我们的重建元组需要这个修改值而不是base_tuple的值
+      // 2.否则直接沿用base_tuple的值
+      // 例如：[1,2,3] -> base_tuple:[1,4,3] -> target = nullptr delmarker
+      // base_tuple的log_tuple:index = 0,tuple = [2] 显然当前需要记录的是这个2而不是4
+      auto val = log.modified_fields_[col] ? 
+        log.tuple_.GetValue(&org_log_schema, ptr++):
+        base_tuple->GetValue(schema, col);
+      values.emplace_back(val);
+      colums.emplace_back(col);
+    }
+  }
+  else{
+    uint32_t ptr = 0;
+    for(uint32_t col = 0;col < colcnt;col++){
+      // base_tuple记录到过去的修改 差异来源于base_tuple
+      if(log.modified_fields_[col]){
+        // 只要当前和undolog里面的mf对应的bool不同就要置位
+        values.emplace_back(log.tuple_.GetValue(&org_log_schema, ptr++));
+        colums.emplace_back(col);
+      }
+      // 否则直接假设base_tuple就是最原始的值 差异来源于现在
+      else{
+        auto tar_val = target_tuple->GetValue(schema, col);
+        auto base_val = base_tuple->GetValue(schema, col);
+        // 和base有差异
+        if(!tar_val.CompareExactlyEquals(base_val)){
+          values.emplace_back(base_val);
+          colums.emplace_back(col);
+        }
+        else{
+          modfileds[col] = false;
+        }
+      }
+    }
+  }
+  Schema sc{Schema::CopySchema(schema, colums)};
+  Tuple res_tuple{std::move(values),&sc};
+  return UndoLog{log.is_deleted_,std::move(modfileds),
+    res_tuple,log.ts_,log.prev_version_};
 }
 
 void TxnMgrDbg(const std::string &info, TransactionManager *txn_mgr, const TableInfo *table_info,

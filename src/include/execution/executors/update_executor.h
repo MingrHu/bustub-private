@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "catalog/catalog.h"
+#include "concurrency/transaction.h"
 #include "execution/executor_context.h"
 #include "execution/executors/abstract_executor.h"
 #include "execution/plans/update_plan.h"

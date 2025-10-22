@@ -46,12 +46,15 @@ auto InsertExecutor::Next(Tuple *tuple, RID *rid) -> bool {
   RID rd{};
 
   while (child_executor_->Next(&tp, &rd)) {
-    TupleMeta tp_meta = {0, false};
-    auto insert_rid = table_info_->table_->InsertTuple(tp_meta, tp, exec_ctx_->GetLockManager(),
-                                                       exec_ctx_->GetTransaction(), table_info_->oid_);
+    // TupleMeta tp_meta = {0, false};
+    // auto insert_rid = table_info_->table_->InsertTuple(tp_meta, tp, exec_ctx_->GetLockManager(),
+    //                                                     exec_ctx_->GetTransaction(), table_info_->oid_);
+    TupleMeta meta = {exec_ctx_->GetTransaction()->GetTransactionId(),false};
+    auto insert_rid = table_info_->table_->InsertTuple(meta, tp);
     // 插入成功
     if (insert_rid.has_value()) {
       insert_count_ += 1;
+      exec_ctx_->GetTransaction()->AppendWriteSet(plan_->GetTableOid(), insert_rid.value());
       for (auto &index_info : indexs_info) {
         // 更新索引先必须获得索引的键 然后是插入的信息和事物上下文
         // 索引的键需要从元组中获取 构造方式一般是元组的几个属性列

@@ -56,11 +56,13 @@ using index_oid_t = uint32_t;
 /** Represents a link to a previous version of this tuple */
 struct UndoLink {
   /* Previous version can be found in which txn */
-  // 日志指向的上一个事务序号
+  // 指向的上一个事务序号
   txn_id_t prev_txn_{INVALID_TXN_ID};
   /* The log index of the previous version in `prev_txn_` */
-  // 日志指向的上一个事务日志ID
+  // 指向的上一个事务日志ID
   int prev_log_idx_{0};
+
+  timestamp_t base_tuple_ts_{INVALID_TS};
 
   friend auto operator==(const UndoLink &a, const UndoLink &b) {
     return a.prev_txn_ == b.prev_txn_ && a.prev_log_idx_ == b.prev_log_idx_;
