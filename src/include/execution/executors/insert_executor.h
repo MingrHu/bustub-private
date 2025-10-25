@@ -62,6 +62,8 @@ class InsertExecutor : public AbstractExecutor {
   bool is_finished_{false};
   std::shared_ptr<TableInfo> table_info_;
   int32_t insert_count_;
+
+  auto KeyExsitInPmKey(const std::shared_ptr<IndexInfo> &pm_key_info, const Tuple &tuple, RID &pm_key_rd) const -> bool;
 };
 
 }  // namespace bustub

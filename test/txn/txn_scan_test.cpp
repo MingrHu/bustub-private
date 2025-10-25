@@ -400,7 +400,6 @@ TEST(TxnScanTest, ScanTest) {  // NOLINT
 
   TxnMgrDbg("before verify scan", bustub->txn_manager_.get(), table_info.get(), table_info->table_.get());
 
-  
   auto query = "SELECT * FROM maintable";
   fmt::println(stderr, "A: Verify txn0");
   WithTxn(txn0, QueryShowResult(*bustub, _var, _txn, query, AnyResult{}));

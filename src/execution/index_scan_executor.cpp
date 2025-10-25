@@ -12,6 +12,7 @@
 #include "execution/executors/index_scan_executor.h"
 #include <vector>
 #include "common/macros.h"
+#include "execution/execution_common.h"
 #include "storage/index/index_iterator.h"
 #include "storage/table/table_iterator.h"
 #include "storage/table/tuple.h"
@@ -44,6 +45,7 @@ void IndexScanExecutor::Init() {
       if (point_temp_res.empty()) {
         continue;
       }
+      // printf("\nindex_key = %s",point_temp_res[0].ToString().c_str());
       point_search_res_.push_back(point_temp_res[0]);
     }
     cur_pos_ = 0;
@@ -55,57 +57,65 @@ void IndexScanExecutor::Init() {
 }
 
 auto IndexScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
+  // point_search本质上是加速查询的
+  // 其实也可以不用根据常量表达式
   if (point_search_) {
     while (cur_pos_ < point_search_res_.size()) {
       // 参考SeqScan
-      auto cur_rid = point_search_res_[cur_pos_++];
-      auto [cur_meta, cur_tuple] = table_info_->table_->GetTuple(cur_rid);
-      if (cur_meta.is_deleted_) {
-        continue;
-      }
-
-      if (plan_->filter_predicate_ != nullptr) {
-        auto need_filt = plan_->filter_predicate_->Evaluate(&cur_tuple, table_info_->schema_);
-        if (need_filt.IsNull() || !need_filt.GetAs<bool>()) {
-          continue;
+      *rid = point_search_res_[cur_pos_++];
+      auto [meta, cur_tuple] = table_info_->table_->GetTuple(*rid);
+      auto res_tuple = AcquireSpecTuple(table_info_->schema_, *rid, table_info_->table_.get(),
+                                        exec_ctx_->GetTransaction(), exec_ctx_->GetTransactionManager());
+      if (res_tuple.has_value()) {
+        auto spec_tuple = res_tuple.value();
+        if (plan_->filter_predicate_ != nullptr) {
+          auto need_filt = plan_->filter_predicate_->Evaluate(&spec_tuple, table_info_->schema_);
+          if (need_filt.IsNull() || !need_filt.GetAs<bool>()) {
+            continue;
+          }
         }
+        auto res = Helperfunc(plan_, spec_tuple, table_info_.get());
+        *tuple = {res, &plan_->OutputSchema()};
+        return true;
       }
-      std::vector<Value> val;
-      for (size_t col_idx = 0; col_idx < plan_->OutputSchema().GetColumnCount(); col_idx++) {
-        val.emplace_back(cur_tuple.GetValue(&table_info_->schema_, col_idx));
-      }
-      *tuple = {val, &plan_->OutputSchema()};
-      *rid = cur_rid;
-      return true;
     }
   } else {
     // 参考seqscan
     while (!iter_.IsEnd()) {
       auto [key, value] = *iter_;
-      ++iter_;
-
-      auto [cur_meta, cur_tuple] = table_info_->table_->GetTuple(value);
-      if (cur_meta.is_deleted_) {
-        continue;
-      }
-
-      if (plan_->filter_predicate_ != nullptr) {
-        auto need_filt = plan_->filter_predicate_->Evaluate(&cur_tuple, table_info_->schema_);
-        if (need_filt.IsNull() || !need_filt.GetAs<bool>()) {
-          continue;
-        }
-      }
-
-      std::vector<Value> val;
-      for (size_t col_idx = 0; col_idx < plan_->OutputSchema().GetColumnCount(); col_idx++) {
-        val.emplace_back(cur_tuple.GetValue(&table_info_->schema_, col_idx));
-      }
-      *tuple = {val, &plan_->OutputSchema()};
       *rid = value;
-      return true;
+      ++iter_;
+      auto [meta, cur_tuple] = table_info_->table_->GetTuple(value);
+      auto res_tuple = AcquireSpecTuple(table_info_->schema_, *rid, table_info_->table_.get(),
+                                        exec_ctx_->GetTransaction(), exec_ctx_->GetTransactionManager());
+      if (res_tuple.has_value()) {
+        auto spec_tuple = res_tuple.value();
+        if (plan_->filter_predicate_ != nullptr) {
+          auto need_filt = plan_->filter_predicate_->Evaluate(&spec_tuple, table_info_->schema_);
+          if (need_filt.IsNull() || !need_filt.GetAs<bool>()) {
+            continue;
+          }
+        }
+        auto res = Helperfunc(plan_, spec_tuple, table_info_.get());
+        *tuple = {res, &plan_->OutputSchema()};
+        return true;
+      }
     }
   }
   return false;
+}
+
+auto IndexScanExecutor::Helperfunc(const IndexScanPlanNode *plan, const Tuple &tp, const TableInfo *table_info) const
+    -> std::vector<Value> {
+  std::vector<Value> res;
+  size_t size = plan->OutputSchema().GetColumnCount();
+  res.reserve(size);
+  // 把Tuple的值按照schema的模式传回tuple
+  for (size_t col_idx = 0; col_idx < size; col_idx++) {
+    // 必须先按照表堆的格式获取数据 元组的列就是col_idx即可
+    res.emplace_back(tp.GetValue(&table_info->schema_, col_idx));
+  }
+  return res;
 }
 
 }  // namespace bustub

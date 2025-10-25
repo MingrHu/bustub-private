@@ -38,12 +38,15 @@ auto TransactionManager::UpdateUndoLink(RID rid, std::optional<UndoLink> prev_li
   }
   std::unique_lock<std::shared_mutex> lck2(pg_ver_info->mutex_);
   lck.unlock();
+  // 这里主要是根据checker判断是否符合预期
   auto iter2 = pg_ver_info->prev_link_.find(rid.GetSlotNum());
+  // 预期为空
   if (iter2 == pg_ver_info->prev_link_.end()) {
     if (check != nullptr && !check(std::nullopt)) {
       return false;
     }
   } else {
+    // 不空 但可能参数需要符合预期
     if (check != nullptr && !check(iter2->second)) {
       return false;
     }

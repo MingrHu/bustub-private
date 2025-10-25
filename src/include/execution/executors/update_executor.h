@@ -14,6 +14,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -76,5 +77,9 @@ class UpdateExecutor : public AbstractExecutor {
   int32_t update_count_;
 
   bool is_finished_;
+
+  bool update_pm_key_;
+
+  std::vector<std::tuple<Tuple, Tuple, RID>> tuples_;
 };
 }  // namespace bustub

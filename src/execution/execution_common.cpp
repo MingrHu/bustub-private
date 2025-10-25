@@ -13,8 +13,11 @@
 #include "execution/execution_common.h"
 #include <cstdint>
 #include <iostream>
+#include <memory>
 #include <optional>
 #include <sstream>
+#include <tuple>
+#include <utility>
 #include <vector>
 
 #include "binder/bound_order_by.h"
@@ -104,41 +107,39 @@ auto ReconstructTuple(const Schema *schema, const Tuple &base_tuple, const Tuple
                       const std::vector<UndoLog> &undo_logs) -> std::optional<Tuple> {
   // 如果当前元组本身是被删除的或者根本没有重构日志
   // 1.如果是被删除的且没有日志或者最后的结果是被删除的
-  if((base_meta.is_deleted_ && undo_logs.empty()) || 
-    (!undo_logs.empty() && undo_logs.back().is_deleted_)){
+  if ((base_meta.is_deleted_ && undo_logs.empty()) || (!undo_logs.empty() && undo_logs.back().is_deleted_)) {
     return std::nullopt;
   }
   // 2.如果没被删除 但是没有日志
-  if(undo_logs.empty()){
+  if (undo_logs.empty()) {
     return base_tuple;
   }
 
   // 先获取最新的完整元组所有列值
   std::vector<Value> base_val;
   base_val.reserve(schema->GetColumnCount());
-  for(uint32_t idx = 0;idx < schema->GetColumnCount();idx++){
+  for (uint32_t idx = 0; idx < schema->GetColumnCount(); idx++) {
     base_val.emplace_back(base_tuple.GetValue(schema, idx));
   }
 
   // 注意：undo_logs的顺序是最新的放最前面
   // 这里只需要构建base_val作为结果返回
-  for(uint32_t idx = 0;idx < undo_logs.size();idx++){
-    auto log = undo_logs[idx];
+  for (const auto &log : undo_logs) {
     // 有删除的直接跳过即可
-    if(log.is_deleted_){
+    if (log.is_deleted_) {
       continue;
     }
     uint32_t ptr = 0;
-    // 这里提取修改值时用的scheam必须新创建 需要获取指定的新列    
-    auto log_schema = GetUndoLogSchema(schema,log);
-    for(uint32_t col = 0;col < log.modified_fields_.size();col++){
-      if(log.modified_fields_[col]){
+    // 这里提取修改值时用的scheam必须新创建 需要获取指定的新列
+    auto log_schema = GetUndoLogSchema(schema, log);
+    for (uint32_t col = 0; col < log.modified_fields_.size(); col++) {
+      if (log.modified_fields_[col]) {
         base_val[col] = log.tuple_.GetValue(&log_schema, ptr++);
       }
     }
   }
 
-  return std::optional<Tuple> {Tuple{base_val,schema}};
+  return std::optional<Tuple>{Tuple{base_val, schema}};
 }
 
 /**
@@ -157,21 +158,20 @@ auto CollectUndoLogs(RID rid, const TupleMeta &base_meta, const Tuple &base_tupl
                      Transaction *txn, TransactionManager *txn_mgr) -> std::optional<std::vector<UndoLog>> {
   auto read_ts = txn->GetReadTs();
   // 1.当前元组没有日志
-  // 2.当前访问的时间戳是大于等于最新的元组 
+  // 2.当前访问的时间戳是大于等于最新的元组
   // 3.当前元组被当前事务处理但未提交
 
   // 返回nullopt的关键条件是指定的日志元组状态是被删除的
-  if(base_meta.ts_ <= read_ts || txn->GetTransactionTempTs() == base_meta.ts_){
-    return (base_meta.is_deleted_ ? std::nullopt : 
-      std::make_optional(std::vector<UndoLog>{}));
+  if (base_meta.ts_ <= read_ts || txn->GetTransactionTempTs() == base_meta.ts_) {
+    return (base_meta.is_deleted_ ? std::nullopt : std::make_optional(std::vector<UndoLog>{}));
   }
   std::vector<UndoLog> undo_logs;
   // 必须找到符合要求的才返回 否则返回空
-  if(undo_link.has_value()){
+  if (undo_link.has_value()) {
     auto log = txn_mgr->GetUndoLogOptional(undo_link.value());
-    while(log.has_value()){
+    while (log.has_value()) {
       undo_logs.emplace_back(log.value());
-      if(log->ts_ <= read_ts){
+      if (log->ts_ <= read_ts) {
         return undo_logs;
       }
       log = txn_mgr->GetUndoLogOptional(log->prev_version_);
@@ -182,19 +182,18 @@ auto CollectUndoLogs(RID rid, const TupleMeta &base_meta, const Tuple &base_tupl
 
 // 根据输入的相关信息获取表堆元组的事务指定访问历史版本
 // 如果最终的返回的元组被删除 则返回std::nullopt
-auto AcquireSpecTuple(const Schema& schema,const RID& rid,TableHeap* table_heap,
-  Transaction* txn,TransactionManager* txn_manager)->std::optional<Tuple>{
-  // std::tuple<TupleMeta, Tuple, std::optional<UndoLink>> 
-  auto [tp_meta,tp,UndoLink] =GetTupleAndUndoLink(txn_manager, table_heap, rid);
+auto AcquireSpecTuple(const Schema &schema, const RID &rid, TableHeap *table_heap, Transaction *txn,
+                      TransactionManager *txn_manager) -> std::optional<Tuple> {
+  // std::tuple<TupleMeta, Tuple, std::optional<UndoLink>>
+  auto [tp_meta, tp, UndoLink] = GetTupleAndUndoLink(txn_manager, table_heap, rid);
   // 元组重建和日志收集已经默认帮我们解决了std::nullopt的问题
   auto undo_logs_opt = CollectUndoLogs(rid, tp_meta, tp, UndoLink, txn, txn_manager);
-  if(!undo_logs_opt.has_value()){
+  if (!undo_logs_opt.has_value()) {
     return std::nullopt;
   }
   auto res_tp = ReconstructTuple(&schema, tp, tp_meta, undo_logs_opt.value());
   return res_tp;
 }
-
 
 /**
  * @brief Generates a new undo log as the transaction tries to modify this tuple at the first time.
@@ -212,32 +211,31 @@ auto GenerateNewUndoLog(const Schema *schema, const Tuple *base_tuple, const Tup
   // target_tuple其实就是最新的元组 而base_tuple就是后续需要还原回去的元组
   // Undolog的tuple就是记录差异的tuple 本方法可以直接根据最原始的元组进行差异日志
   // 当前的delete = true可以认为当前元组通过删除得到的base_tuple
-  std::vector<bool> modfileds(schema->GetColumnCount(),true);
-  // case1 当前元组被删除 当前不记录 
-  if(target_tuple == nullptr){
-    return UndoLog{false,modfileds,*base_tuple,ts,prev_version};
+  std::vector<bool> modfileds(schema->GetColumnCount(), true);
+  // case1 当前元组被删除 当前不记录
+  if (target_tuple == nullptr) {
+    return UndoLog{false, modfileds, *base_tuple, ts, prev_version};
   }
   // case2 当前对过去是一个删除操作
-  if(base_tuple == nullptr){
-    return UndoLog{true,{},{},ts,prev_version};
+  if (base_tuple == nullptr) {
+    return UndoLog{true, {}, {}, ts, prev_version};
   }
   // case3
   std::vector<Value> val;
   std::vector<uint32_t> colums;
-  for(uint32_t col = 0;col < schema->GetColumnCount();col++){
+  for (uint32_t col = 0; col < schema->GetColumnCount(); col++) {
     auto base_val = base_tuple->GetValue(schema, col);
     auto tar_val = target_tuple->GetValue(schema, col);
-    if(!base_val.CompareExactlyEquals(tar_val)){
+    if (!base_val.CompareExactlyEquals(tar_val)) {
       val.emplace_back(base_val);
       colums.emplace_back(col);
-    }
-    else{
+    } else {
       modfileds[col] = false;
     }
   }
   Schema sc{Schema::CopySchema(schema, colums)};
-  Tuple res_tuple = {std::move(val),&sc};
-  return UndoLog{false,std::move(modfileds),res_tuple,ts,prev_version};
+  Tuple res_tuple = {std::move(val), &sc};
+  return UndoLog{false, std::move(modfileds), res_tuple, ts, prev_version};
 }
 
 /**
@@ -254,63 +252,72 @@ auto GenerateUpdatedUndoLog(const Schema *schema, const Tuple *base_tuple, const
                             const UndoLog &log) -> UndoLog {
   // 如果base_tuple == nullptr说明其日志是一个全部修改的
   // 不需要考虑这个中间状态 直接返回即可
-  if(log.is_deleted_ || base_tuple == nullptr){
+  if (log.is_deleted_ || base_tuple == nullptr) {
     return log;
   }
+
+  // 如果需要更新的日志是一个删除操作
+  if (base_tuple == nullptr) {
+    std::vector<bool> modified_fields(schema->GetColumnCount(), true);
+    std::vector<Value> values;
+    for (const auto &col : schema->GetColumns()) {
+      auto null_value = ValueFactory::GetNullValueByType(col.GetType());
+      values.emplace_back(null_value);
+    }
+    Tuple tuple{values, schema};
+    tuple.SetRid(target_tuple->GetRid());
+    return {true, modified_fields, tuple, log.ts_, log.prev_version_};
+  }
+
   uint32_t colcnt = schema->GetColumnCount();
   std::vector<Value> values;
   values.reserve(colcnt);
   std::vector<uint32_t> colums;
   colums.reserve(colcnt);
-  std::vector<bool> modfileds(colcnt,true);
-  
+  std::vector<bool> modfileds(colcnt, true);
+
   // 获取上一个修改字段元组的schema
-  auto org_log_schema = GetUndoLogSchema(schema,log);
+  auto org_log_schema = GetUndoLogSchema(schema, log);
 
   // 如果当前的操作是删除操作
-  if(target_tuple == nullptr){
+  if (target_tuple == nullptr) {
     uint32_t ptr = 0;
-    for(uint32_t col = 0;col < colcnt;col++){
+    for (uint32_t col = 0; col < colcnt; col++) {
       // 这里分两种情况 由于重建需要根据删除的元组去重建过去的
       // 1.如果过去的日志中某列是修改得到的 我们的重建元组需要这个修改值而不是base_tuple的值
       // 2.否则直接沿用base_tuple的值
       // 例如：[1,2,3] -> base_tuple:[1,4,3] -> target = nullptr delmarker
       // base_tuple的log_tuple:index = 0,tuple = [2] 显然当前需要记录的是这个2而不是4
-      auto val = log.modified_fields_[col] ? 
-        log.tuple_.GetValue(&org_log_schema, ptr++):
-        base_tuple->GetValue(schema, col);
+      auto val =
+          log.modified_fields_[col] ? log.tuple_.GetValue(&org_log_schema, ptr++) : base_tuple->GetValue(schema, col);
       values.emplace_back(val);
       colums.emplace_back(col);
     }
-  }
-  else{
+  } else {
     uint32_t ptr = 0;
-    for(uint32_t col = 0;col < colcnt;col++){
+    for (uint32_t col = 0; col < colcnt; col++) {
       // base_tuple记录到过去的修改 差异来源于base_tuple
-      if(log.modified_fields_[col]){
+      if (log.modified_fields_[col]) {
         // 只要当前和undolog里面的mf对应的bool不同就要置位
         values.emplace_back(log.tuple_.GetValue(&org_log_schema, ptr++));
         colums.emplace_back(col);
-      }
-      // 否则直接假设base_tuple就是最原始的值 差异来源于现在
-      else{
+        // 否则直接假设base_tuple就是最原始的值 差异来源于现在
+      } else {
         auto tar_val = target_tuple->GetValue(schema, col);
         auto base_val = base_tuple->GetValue(schema, col);
         // 和base有差异
-        if(!tar_val.CompareExactlyEquals(base_val)){
+        if (!tar_val.CompareExactlyEquals(base_val)) {
           values.emplace_back(base_val);
           colums.emplace_back(col);
-        }
-        else{
+        } else {
           modfileds[col] = false;
         }
       }
     }
   }
   Schema sc{Schema::CopySchema(schema, colums)};
-  Tuple res_tuple{std::move(values),&sc};
-  return UndoLog{log.is_deleted_,std::move(modfileds),
-    res_tuple,log.ts_,log.prev_version_};
+  Tuple res_tuple{std::move(values), &sc};
+  return UndoLog{log.is_deleted_, std::move(modfileds), res_tuple, log.ts_, log.prev_version_};
 }
 
 void TxnMgrDbg(const std::string &info, TransactionManager *txn_mgr, const TableInfo *table_info,
@@ -322,7 +329,8 @@ void TxnMgrDbg(const std::string &info, TransactionManager *txn_mgr, const Table
   // fmt::println(
   //     stderr,
   //     "You see this line of text because you have not implemented `TxnMgrDbg`. You should do this once you have "
-  //     "finished task 2. Implementing this helper function will save you a lot of time for debugging in later tasks.");
+  //     "finished task 2. Implementing this helper function will save you a lot of time for debugging in later
+  //     tasks.");
   auto iter = table_heap->MakeIterator();
   while (!iter.IsEnd()) {
     ss << "--------------Cur tuple infomation-----------\n";
@@ -330,7 +338,7 @@ void TxnMgrDbg(const std::string &info, TransactionManager *txn_mgr, const Table
     auto [metadata, tuple] = iter.GetTuple();
     ss << fmt::format("RID={}/{}", rid.GetPageId(), rid.GetSlotNum());
     // 当前元组属于未提交的元组
-    if (metadata.ts_ & TXN_START_ID) {
+    if ((metadata.ts_ & TXN_START_ID) != 0) {
       ss << fmt::format(" ts={}* ", metadata.ts_ ^ TXN_START_ID);
     } else {
       ss << fmt::format(" ts={}  ", metadata.ts_);
@@ -405,14 +413,31 @@ auto UndoLogToString(const Schema *schema, const UndoLog &log) -> std::string {
   return ss.str();
 }
 
-auto GetUndoLogSchema(const Schema *schema, const UndoLog &log) -> Schema{
+auto GetUndoLogSchema(const Schema *schema, const UndoLog &log) -> Schema {
   std::vector<Column> schema_val;
-  for(uint32_t i = 0;i < log.modified_fields_.size();i++){
-    if(log.modified_fields_[i]){
+  for (uint32_t i = 0; i < log.modified_fields_.size(); i++) {
+    if (log.modified_fields_[i]) {
       schema_val.emplace_back(schema->GetColumn(i));
     }
   }
-  return Schema{std::move(schema_val)};
+  return Schema{schema_val};
+}
+
+auto UpdatePrmIndexs(const TableInfo *table_info, std::shared_ptr<IndexInfo> &pm_index,
+                     const std::vector<std::tuple<Tuple, Tuple, RID>> &tuples_info, Transaction *txn) -> void {
+  // DELETE
+  for (const auto &[new_tp, old_tp, rid] : tuples_info) {
+    auto old_key = old_tp.KeyFromTuple(table_info->schema_, pm_index->key_schema_, pm_index->index_->GetKeyAttrs());
+    pm_index->index_->DeleteEntry(old_key, rid, txn);
+  }
+  // INSERT
+  for (const auto &[new_tp, old_tp, rid] : tuples_info) {
+    auto new_key = new_tp.KeyFromTuple(table_info->schema_, pm_index->key_schema_, pm_index->index_->GetKeyAttrs());
+    if (!pm_index->index_->InsertEntry(new_key, rid, txn)) {
+      txn->SetTainted();
+      throw ExecutionException("Write-write confilct detected in InsertExecutor!");
+    }
+  }
 }
 
 }  // namespace bustub

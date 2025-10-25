@@ -19,7 +19,7 @@
 namespace bustub {
 // 四参数构造函数
 DiskRequest::DiskRequest(bool is_write, char *data, page_id_t page_id, std::promise<bool> callbak)
-    : is_write_(is_write), data_(data), page_id_(page_id), callback_(std::move(callbak)){};
+    : is_write_(is_write), data_(data), page_id_(page_id), callback_(std::move(callbak)) {}
 
 // 移动构造函数
 DiskRequest::DiskRequest(DiskRequest &&that) noexcept {

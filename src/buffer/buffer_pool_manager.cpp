@@ -277,9 +277,7 @@ auto BufferPoolManager::CheckedWritePage(page_id_t page_id, AccessType access_ty
         newframe->frame_cv_.wait(lock);
       }
       res = std::move(wguard);
-    }
-    // 去寻找可驱逐的帧
-    else {
+    } else {
       // Evict已经是线程安全的 保证被驱逐的不会被线程占用
       auto evid = replacer_->Evict();
       if (!evid.has_value()) {
@@ -642,13 +640,13 @@ DiskManagerProxy::DiskManagerProxy(std::shared_ptr<DiskScheduler> &disk_schedule
 }
 
 DiskManagerProxy::ProxyFrame::ProxyFrame(std::shared_ptr<FrameHeader> &frame, bool iswrite, page_id_t oldpgid)
-    : iswrite_(iswrite), frame_(frame), oldpgid_(oldpgid){};
+    : iswrite_(iswrite), frame_(frame), oldpgid_(oldpgid) {}
 
 DiskManagerProxy::ProxyFrame::ProxyFrame(ProxyFrame &&that) noexcept {
   iswrite_ = that.iswrite_;
   frame_ = std::move(that.frame_);
   oldpgid_ = that.oldpgid_;
-};
+}
 
 auto DiskManagerProxy::ProxyFrame::operator=(ProxyFrame &&that) noexcept -> DiskManagerProxy::ProxyFrame & {
   if (this != &that) {

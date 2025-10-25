@@ -648,9 +648,7 @@ auto BPLUSTREE_TYPE::KeyBinarySearch(const KeyType &key, const BPlusTreePage *pa
       // mid < target
       if (comparator_(leaf_page->KeyAt(mid), key) == -1) {
         l = mid + 1;
-      }
-      // mid > target
-      else if (comparator_(leaf_page->KeyAt(mid), key) == 1) {
+      } else if (comparator_(leaf_page->KeyAt(mid), key) == 1) {
         r = mid - 1;
       } else {
         return mid;
@@ -696,9 +694,7 @@ auto BPLUSTREE_TYPE::LowerBound(const KeyType &key, const BPlusTreePage *target_
       // mid < target
       if (comparator_(leaf_page->KeyAt(mid), key) == -1) {
         l = mid + 1;
-      }
-      // mid >= target
-      else {
+      } else {
         r = mid - 1;
       }
       mid = l + (r - l) / 2;
@@ -713,9 +709,7 @@ auto BPLUSTREE_TYPE::LowerBound(const KeyType &key, const BPlusTreePage *target_
       // mid < target
       if (comparator_(inner_page->KeyAt(mid), key) == -1) {
         l = mid + 1;
-      }
-      // mid >= target
-      else {
+      } else {
         r = mid - 1;
       }
       mid = l + (r - l) / 2;

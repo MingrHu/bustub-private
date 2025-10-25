@@ -28,7 +28,7 @@
 namespace bustub {
 
 SeqScanExecutor::SeqScanExecutor(ExecutorContext *exec_ctx, const SeqScanPlanNode *plan)
-    : AbstractExecutor(exec_ctx), plan_(plan){}
+    : AbstractExecutor(exec_ctx), plan_(plan) {}
 
 void SeqScanExecutor::Init() {
   table_info_ = exec_ctx_->GetCatalog()->GetTable(plan_->GetTableOid());
@@ -41,14 +41,14 @@ auto SeqScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
     // 获取当前表堆迭代器的元组相关信息
     *rid = table_iter_->GetRID();
     auto [meta, tp] = table_iter_->GetTuple();
-    
+
     ++(*table_iter_);
     // const Schema& schema,const RID& rid,TableHeap* table_heap,
     // Transaction* txn,TransactionManager* txn_manager
-    auto res_tuple = AcquireSpecTuple(table_info_->schema_,*rid,table_info_->table_.get(),
-    exec_ctx_->GetTransaction(),exec_ctx_->GetTransactionManager());
-    if(res_tuple.has_value()){
-      // 过滤条件 原本是加在最新的元组上的 现在应用在过去的元组上 
+    auto res_tuple = AcquireSpecTuple(table_info_->schema_, *rid, table_info_->table_.get(),
+                                      exec_ctx_->GetTransaction(), exec_ctx_->GetTransactionManager());
+    if (res_tuple.has_value()) {
+      // 过滤条件 原本是加在最新的元组上的 现在应用在过去的元组上
       auto spec_tuple = res_tuple.value();
       if (plan_->filter_predicate_ != nullptr) {
         auto need_filt = plan_->filter_predicate_->Evaluate(&spec_tuple, plan_->OutputSchema());
@@ -65,7 +65,8 @@ auto SeqScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
   return false;
 }
 
-auto SeqScanExecutor::Helperfunc(const SeqScanPlanNode* plan,const Tuple& tp,const TableInfo* table_info)const->std::vector<Value>{
+auto SeqScanExecutor::Helperfunc(const SeqScanPlanNode *plan, const Tuple &tp, const TableInfo *table_info) const
+    -> std::vector<Value> {
   std::vector<Value> res;
   size_t size = plan->OutputSchema().GetColumnCount();
   res.reserve(size);

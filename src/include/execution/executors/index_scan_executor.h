@@ -58,11 +58,19 @@ class IndexScanExecutor : public AbstractExecutor {
   const IndexScanPlanNode *plan_;
 
   bool point_search_;
+
   std::vector<RID> point_search_res_;
+
   IndexIterator<IntegerKeyType_BTree, IntegerValueType_BTree, IntegerComparatorType_BTree> iter_;
+
   size_t cur_pos_;
 
   std::shared_ptr<TableInfo> table_info_;
+
   std::shared_ptr<IndexInfo> index_info_;
+
+  auto Helperfunc(const IndexScanPlanNode *plan, const Tuple &tp, const TableInfo *table_info) const
+      -> std::vector<Value>;
 };
+
 }  // namespace bustub

@@ -20,8 +20,7 @@
 #include <limits>
 #include <list>
 #include <memory>
-#include <mutex>  // NOLINT
-#include <string>
+#include <mutex>   // NOLINT
 #include <thread>  // NOLINT
 #include <unordered_map>
 #include <unordered_set>
@@ -31,7 +30,6 @@
 #include "common/config.h"
 #include "common/logger.h"
 #include "execution/expressions/abstract_expression.h"
-#include "storage/page/page.h"
 #include "storage/table/tuple.h"
 
 namespace bustub {
@@ -60,9 +58,12 @@ struct UndoLink {
   txn_id_t prev_txn_{INVALID_TXN_ID};
   /* The log index of the previous version in `prev_txn_` */
   // 指向的上一个事务日志ID
-  int prev_log_idx_{0};
+  int prev_log_idx_{-1};
 
+  // 辅助作用 在GC的时候需要依赖这个进行元组判断
   timestamp_t base_tuple_ts_{INVALID_TS};
+  // 辅助作用 主要是用于告知当前元组是否被占用
+  bool is_inprogress_{false};
 
   friend auto operator==(const UndoLink &a, const UndoLink &b) {
     return a.prev_txn_ == b.prev_txn_ && a.prev_log_idx_ == b.prev_log_idx_;

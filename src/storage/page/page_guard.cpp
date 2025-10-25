@@ -23,7 +23,7 @@ PageGuard::PageGuard(page_id_t page_id, std::shared_ptr<FrameHeader> frame, std:
       frame_(std::move(frame)),
       replacer_(std::move(replacer)),
       bpm_latch_(std::move(bpm_latch)),
-      disk_scheduler_(std::move(disk_scheduler)){};
+      disk_scheduler_(std::move(disk_scheduler)) {}
 
 PageGuard::PageGuard(PageGuard &&that) noexcept
     : page_id_(that.page_id_),
@@ -35,7 +35,7 @@ PageGuard::PageGuard(PageGuard &&that) noexcept
       is_readguard_(that.is_readguard_) {
   that.is_valid_ = false;
   that.page_id_ = INVALID_PAGE_ID;
-};
+}
 
 auto PageGuard::operator=(PageGuard &&that) noexcept -> PageGuard & {
   if (this != &that) {

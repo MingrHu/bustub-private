@@ -15,10 +15,14 @@
 #include <utility>
 #include <vector>
 
+#include <memory>
+#include <tuple>
 #include "binder/bound_order_by.h"
 #include "catalog/catalog.h"
 #include "catalog/schema.h"
 #include "concurrency/transaction.h"
+#include "concurrency/transaction_manager.h"
+#include "execution/executor_context.h"
 #include "storage/table/tuple.h"
 
 namespace bustub {
@@ -57,9 +61,9 @@ auto ReconstructTuple(const Schema *schema, const Tuple &base_tuple, const Tuple
 
 auto CollectUndoLogs(RID rid, const TupleMeta &base_meta, const Tuple &base_tuple, std::optional<UndoLink> undo_link,
                      Transaction *txn, TransactionManager *txn_mgr) -> std::optional<std::vector<UndoLog>>;
-                
-auto AcquireSpecTuple(const Schema& schema,const RID& rid,TableHeap* table_heap,
-  Transaction* txn,TransactionManager* txn_manager)->std::optional<Tuple>;
+
+auto AcquireSpecTuple(const Schema &schema, const RID &rid, TableHeap *table_heap, Transaction *txn,
+                      TransactionManager *txn_manager) -> std::optional<Tuple>;
 
 auto GenerateNewUndoLog(const Schema *schema, const Tuple *base_tuple, const Tuple *target_tuple, timestamp_t ts,
                         UndoLink prev_version) -> UndoLog;
@@ -74,6 +78,9 @@ auto UndoLogToString(const Schema *schema, const UndoLog &log) -> std::string;
 
 // 获取日志的修改列对应的字段
 auto GetUndoLogSchema(const Schema *schema, const UndoLog &log) -> Schema;
+
+auto UpdatePrmIndexs(const TableInfo *table_info, std::shared_ptr<IndexInfo> &pm_index,
+                     const std::vector<std::tuple<Tuple, Tuple, RID>> &tuples_info, Transaction *txn) -> void;
 // TODO(P4): Add new functions as needed... You are likely need to define some more functions.
 //
 // To give you a sense of what can be shared across executors / transaction manager, here are the

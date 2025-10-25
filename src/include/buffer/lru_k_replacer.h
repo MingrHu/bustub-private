@@ -45,10 +45,10 @@ class LRUKNode {
 
   LRUKNode *prev_, *next_;
 
-  LRUKNode() : k_(0), fid_(0), is_evictable_(false), is_initial_(false), prev_(nullptr), next_(nullptr){};
+  LRUKNode() : k_(0), fid_(0), is_evictable_(false), is_initial_(false), prev_(nullptr), next_(nullptr) {}
 
   LRUKNode(size_t k, frame_id_t fid)
-      : k_(k), fid_(fid), is_evictable_(false), is_initial_(false), prev_(nullptr), next_(nullptr){};
+      : k_(k), fid_(fid), is_evictable_(false), is_initial_(false), prev_(nullptr), next_(nullptr) {}
 
   void Updatehistory(size_t timestamp);
 

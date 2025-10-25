@@ -13,6 +13,7 @@
 #pragma once
 
 #include <memory>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -29,7 +30,7 @@
 struct HashJoinKey {
   std::vector<bustub::Value> keys_;
   // 防止隐式子转换
-  explicit HashJoinKey(std::vector<bustub::Value> keys) : keys_(std::move(keys)){};
+  explicit HashJoinKey(std::vector<bustub::Value> keys) : keys_(std::move(keys)) {}
 
   HashJoinKey() = default;
 

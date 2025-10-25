@@ -62,7 +62,7 @@ class SeqScanExecutor : public AbstractExecutor {
   // 本质上是一个cursor 指向当前的元组 并可以按顺序访问下一个元组 无论是否在一个页上
   std::shared_ptr<TableIterator> table_iter_;
   // 构建元组列值辅助函数
-  auto Helperfunc(const SeqScanPlanNode* plan,const Tuple& tp,
-    const TableInfo* table_info)const->std::vector<Value>;
+  auto Helperfunc(const SeqScanPlanNode *plan, const Tuple &tp, const TableInfo *table_info) const
+      -> std::vector<Value>;
 };
 }  // namespace bustub
