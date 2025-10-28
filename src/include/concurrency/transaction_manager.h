@@ -97,6 +97,8 @@ class TransactionManager {
      * it will create new elements even if it does not exist. Use `find` instead.
      */
     std::unordered_map<slot_offset_t, UndoLink> prev_link_;
+    
+    std::unordered_map<slot_offset_t, timestamp_t> base_tuple_ts_;
   };
 
   /** protects version info */

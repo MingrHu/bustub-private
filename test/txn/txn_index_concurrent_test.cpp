@@ -123,7 +123,7 @@ TEST(TxnIndexTest, IndexConcurrentUpdateTest) {  // NOLINT
     EnsureIndexScan(*bustub);
     Execute(*bustub, "CREATE TABLE maintable(a int primary key, b int)");
     std::vector<std::thread> update_threads;
-    const int thread_cnt = 8;
+    const int thread_cnt = 8; // 8
     const int number_cnt = 20;
     Execute(*bustub, generate_insert_sql(number_cnt), false);
     TableHeapEntryNoMoreThan(*bustub, bustub->catalog_->GetTable("maintable").get(), number_cnt);
@@ -147,6 +147,7 @@ TEST(TxnIndexTest, IndexConcurrentUpdateTest) {  // NOLINT
             result.push_back(false);
             continue;
           }
+          // bool flag = add_delete_insert ? false : add_delete_insert;
           if (add_delete_insert) {
             StringVectorWriter data_writer;
             BUSTUB_ENSURE(bustub->ExecuteSqlTxn(generate_select_sql(i), data_writer, txn), "cannot retrieve data");

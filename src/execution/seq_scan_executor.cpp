@@ -41,7 +41,7 @@ auto SeqScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
     // 获取当前表堆迭代器的元组相关信息
     *rid = table_iter_->GetRID();
     auto [meta, tp] = table_iter_->GetTuple();
-
+    BUSTUB_ENSURE(meta.ts_ >= 0, "meta ts error!");
     ++(*table_iter_);
     // const Schema& schema,const RID& rid,TableHeap* table_heap,
     // Transaction* txn,TransactionManager* txn_manager

@@ -13,6 +13,7 @@
 #pragma once
 
 #include <memory>
+#include <mutex>
 #include <utility>
 
 #include "catalog/catalog.h"
@@ -58,12 +59,14 @@ class InsertExecutor : public AbstractExecutor {
  private:
   /** The insert plan node to be executed*/
   const InsertPlanNode *plan_;
-  std::unique_ptr<AbstractExecutor> child_executor_;
-  bool is_finished_{false};
-  std::shared_ptr<TableInfo> table_info_;
-  int32_t insert_count_;
 
-  auto KeyExsitInPmKey(const std::shared_ptr<IndexInfo> &pm_key_info, const Tuple &tuple, RID &pm_key_rd) const -> bool;
+  std::unique_ptr<AbstractExecutor> child_executor_;
+
+  bool is_finished_{false};
+
+  std::shared_ptr<TableInfo> table_info_;
+  
+  int32_t insert_count_;
 };
 
 }  // namespace bustub

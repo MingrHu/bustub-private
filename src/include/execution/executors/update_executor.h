@@ -67,19 +67,14 @@ class UpdateExecutor : public AbstractExecutor {
   const UpdatePlanNode *plan_;
 
   /** Metadata identifying the table that should be updated */
-  const TableInfo *table_info_;
+  std::shared_ptr<TableInfo> table_info_;
 
   /** The child executor to obtain value from */
   std::unique_ptr<AbstractExecutor> child_executor_;
 
   std::vector<std::shared_ptr<IndexInfo>> indexs_info_;
 
-  int32_t update_count_;
-
   bool is_finished_;
 
-  bool update_pm_key_;
-
-  std::vector<std::tuple<Tuple, Tuple, RID>> tuples_;
 };
 }  // namespace bustub

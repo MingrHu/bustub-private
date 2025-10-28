@@ -64,6 +64,7 @@ auto IndexScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
       // 参考SeqScan
       *rid = point_search_res_[cur_pos_++];
       auto [meta, cur_tuple] = table_info_->table_->GetTuple(*rid);
+      BUSTUB_ENSURE(meta.ts_ >= 0, "meta ts error!");
       auto res_tuple = AcquireSpecTuple(table_info_->schema_, *rid, table_info_->table_.get(),
                                         exec_ctx_->GetTransaction(), exec_ctx_->GetTransactionManager());
       if (res_tuple.has_value()) {
@@ -86,6 +87,7 @@ auto IndexScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
       *rid = value;
       ++iter_;
       auto [meta, cur_tuple] = table_info_->table_->GetTuple(value);
+      BUSTUB_ENSURE(meta.ts_ >= 0, "meta ts error!");
       auto res_tuple = AcquireSpecTuple(table_info_->schema_, *rid, table_info_->table_.get(),
                                         exec_ctx_->GetTransaction(), exec_ctx_->GetTransactionManager());
       if (res_tuple.has_value()) {

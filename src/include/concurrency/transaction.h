@@ -61,9 +61,7 @@ struct UndoLink {
   int prev_log_idx_{-1};
 
   // 辅助作用 在GC的时候需要依赖这个进行元组判断
-  timestamp_t base_tuple_ts_{INVALID_TS};
-  // 辅助作用 主要是用于告知当前元组是否被占用
-  bool is_inprogress_{false};
+  // timestamp_t base_tuple_ts_{INVALID_TS};
 
   friend auto operator==(const UndoLink &a, const UndoLink &b) {
     return a.prev_txn_ == b.prev_txn_ && a.prev_log_idx_ == b.prev_log_idx_;

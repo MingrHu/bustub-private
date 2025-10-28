@@ -74,16 +74,15 @@ auto TransactionManager::Commit(Transaction *txn) -> bool {
       table_info->table_->UpdateTupleMeta(meta, rid);
       // 看看这个undlink是否存在
       if (version_info_.find(rid.GetPageId()) != version_info_.end()) {
+        auto ver_info = version_info_[rid.GetPageId()];
         auto &link_info = version_info_[rid.GetPageId()]->prev_link_;
         if (link_info.find(rid.GetSlotNum()) != link_info.end()) {
           // 更新最新元组在undolink的提交时间
-          link_info[rid.GetSlotNum()].base_tuple_ts_ = commit_ts;
+          ver_info->base_tuple_ts_[rid.GetSlotNum()] = commit_ts;
         }
       }
     }
   }
-  // 释放事务涉及的元组在undlink里面的锁（标志位）
-  UnlockAllTuples(txn);
 
   // 提交事务 更新last_commit_ts
   std::unique_lock<std::shared_mutex> lck(txn_map_mutex_);
@@ -136,7 +135,7 @@ void TransactionManager::GarbageCollection() {
         // 2.看这个undolog是第几个 如果是第一个 假设base_tuple都小于水位线 那显然这个undolog可以去除
         // 否则只要是后面小于水位线的 都可以被去除
         // BUSTUB_ENSURE(undolink.base_tuple_ts_ != INVALID_TS, "Base_tuple uncommited!\n");
-        int32_t base_pos = undolink.base_tuple_ts_ <= water_mark ? -1 : 0;
+        int32_t base_pos = ver_info.second->base_tuple_ts_[tuple_offset] <= water_mark ? -1 : 0;
         int32_t cur_pos = 0;
         for (auto undolog_opt = first_undolog_opt; undolink.prev_txn_ != INVALID_TXN_ID;
              undolink = undolog_opt->prev_version_) {
@@ -167,39 +166,39 @@ void TransactionManager::GarbageCollection() {
   }
 }
 
-auto TransactionManager::LockTuple(const RID &rid) -> bool {
-  auto undolink = GetUndoLink(rid);
-  // 存在版本链 当前元组是被修改过的
-  if (undolink.has_value()) {
-    // 预期的的tuple是不被占用的
-    auto checker = [undolink](std::optional<UndoLink> old_undolink) -> bool {
-      return old_undolink.has_value() && !old_undolink->is_inprogress_ &&
-             old_undolink->prev_txn_ == undolink->prev_txn_;
-    };
-    return UpdateUndoLink(
-        rid, std::make_optional(UndoLink{undolink->prev_txn_, undolink->prev_log_idx_, undolink->base_tuple_ts_, true}),
-        checker);
-  }
-  UndoLink lk_tp_undolink_info = {};
-  lk_tp_undolink_info.is_inprogress_ = true;
-  return UpdateUndoLink(rid, lk_tp_undolink_info, [](std::optional<UndoLink> old_undolink) -> bool {
-    // 预期是不含undolink
-    return !old_undolink.has_value();
-  });
-}
+// auto TransactionManager::LockTuple(const RID &rid) -> bool {
+//   auto undolink = GetUndoLink(rid);
+//   // 存在版本链 当前元组是被修改过的
+//   if (undolink.has_value()) {
+//     // 预期的的tuple是不被占用的
+//     auto checker = [undolink](std::optional<UndoLink> old_undolink) -> bool {
+//       return old_undolink.has_value() && !old_undolink->is_inprogress_ &&
+//              old_undolink->prev_txn_ == undolink->prev_txn_;
+//     };
+//     return UpdateUndoLink(
+//         rid, std::make_optional(UndoLink{undolink->prev_txn_, undolink->prev_log_idx_, undolink->base_tuple_ts_,
+//         true}), checker);
+//   }
+//   UndoLink lk_tp_undolink_info = {};
+//   lk_tp_undolink_info.is_inprogress_ = true;
+//   return UpdateUndoLink(rid, lk_tp_undolink_info, [](std::optional<UndoLink> old_undolink) -> bool {
+//     // 预期是不含undolink
+//     return !old_undolink.has_value();
+//   });
+// }
 
-auto TransactionManager::UnlockAllTuples(Transaction *txn) -> void {
-  std::unique_lock<std::shared_mutex> version_info_lck(version_info_mutex_);
-  for (const auto &p : txn->GetWriteSets()) {
-    for (const auto &rid : p.second) {
-      if (auto iter = version_info_.find(rid.GetPageId()); iter != version_info_.end()) {
-        auto &prev_version = iter->second->prev_link_;
-        if (auto iter = prev_version.find(rid.GetSlotNum()); iter != prev_version.end()) {
-          iter->second.is_inprogress_ = false;
-        }
-      }
-    }
-  }
-}
+// auto TransactionManager::UnlockAllTuples(Transaction *txn) -> void {
+//   std::unique_lock<std::shared_mutex> version_info_lck(version_info_mutex_);
+//   for (const auto &p : txn->GetWriteSets()) {
+//     for (const auto &rid : p.second) {
+//       if (auto iter = version_info_.find(rid.GetPageId()); iter != version_info_.end()) {
+//         auto &prev_version = iter->second->prev_link_;
+//         if (auto iter = prev_version.find(rid.GetSlotNum()); iter != prev_version.end()) {
+//           iter->second.is_inprogress_ = false;
+//         }
+//       }
+//     }
+//   }
+// }
 
 }  // namespace bustub

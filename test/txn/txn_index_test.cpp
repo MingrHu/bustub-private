@@ -251,6 +251,7 @@ TEST(TxnIndexTest, UpdatePrimaryKeyTest) {  // NOLINT
   WithTxn(txn1, CommitTxn(*bustub, _var, _txn));
   TxnMgrDbg("after txn1 insert", bustub->txn_manager_.get(), table_info.get(), table_info->table_.get());
   auto txn2 = BeginTxn(*bustub, "txn2");
+  auto txn2_verify_index = BeginTxn(*bustub, "txn2_verify");
   WithTxn(txn2, ExecuteTxn(*bustub, _var, _txn, "UPDATE maintable SET col1 = col1 + 1"));
   WithTxn(txn2, QueryShowResult(*bustub, _var, _txn, query, IntResult{{2, 0}, {3, 0}, {4, 0}, {5, 0}}));
   WithTxn(txn2, QueryIndex(*bustub, _var, _txn, query, "col1", std::vector<int>{1, 2, 3, 4, 5},
@@ -263,6 +264,10 @@ TEST(TxnIndexTest, UpdatePrimaryKeyTest) {  // NOLINT
   WithTxn(txn3, QueryIndex(*bustub, _var, _txn, query, "col1", std::vector<int>{0, 1, 2, 3, 4, 5},
                            IntResult{{0, 0}, {1, 0}, {2, 0}, {3, 0}, {}, {}}));
   WithTxn(txn3, CommitTxn(*bustub, _var, _txn));
+
+  WithTxn(txn2_verify_index, QueryShowResult(*bustub, _var, _txn, query, IntResult{{1, 0}, {2, 0}, {3, 0}, {4, 0}}));
+  WithTxn(txn2_verify_index, QueryIndex(*bustub, _var, _txn, query, "col1", std::vector<int>{1, 2, 3, 4},
+                           IntResult{{1, 0}, {2, 0}, {3, 0}, {4, 0}}));
   // hidden tests...
 }
 
