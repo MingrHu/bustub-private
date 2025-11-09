@@ -438,23 +438,6 @@ auto KeyExsitInPmKey(const std::shared_ptr<IndexInfo> &pm_key_info, const Tuple 
   return !check.empty();
 }
 
-// auto UpdatePrmIndexs(const TableInfo *table_info, std::shared_ptr<IndexInfo> &pm_index,
-//                      const std::vector<std::tuple<Tuple, Tuple, RID>> &tuples_info, Transaction *txn) -> void {
-//   // DELETE
-//   for (const auto &[new_tp, old_tp, rid] : tuples_info) {
-//     auto old_key = old_tp.KeyFromTuple(table_info->schema_, pm_index->key_schema_, pm_index->index_->GetKeyAttrs());
-//     pm_index->index_->DeleteEntry(old_key, rid, txn);
-//   }
-//   // INSERT
-//   for (const auto &[new_tp, old_tp, rid] : tuples_info) {
-//     auto new_key = new_tp.KeyFromTuple(table_info->schema_, pm_index->key_schema_, pm_index->index_->GetKeyAttrs());
-//     if (!pm_index->index_->InsertEntry(new_key, rid, txn)) {
-//       txn->SetTainted();
-//       throw ExecutionException("Write-write confilct detected in InsertExecutor!");
-//     }
-//   }
-// }
-
 auto PmKeyInsertTuple(Transaction* txn,TransactionManager* txn_mgr,Tuple new_tuple,std::shared_ptr<IndexInfo>& pm_key_index,
 std::shared_ptr<TableInfo>& table_info)->void{
 
