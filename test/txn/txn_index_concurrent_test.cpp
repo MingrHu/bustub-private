@@ -123,7 +123,7 @@ TEST(TxnIndexTest, IndexConcurrentUpdateTest) {  // NOLINT
     EnsureIndexScan(*bustub);
     Execute(*bustub, "CREATE TABLE maintable(a int primary key, b int)");
     std::vector<std::thread> update_threads;
-    const int thread_cnt = 8; // 8
+    const int thread_cnt = 8;  // 8
     const int number_cnt = 20;
     Execute(*bustub, generate_insert_sql(number_cnt), false);
     TableHeapEntryNoMoreThan(*bustub, bustub->catalog_->GetTable("maintable").get(), number_cnt);

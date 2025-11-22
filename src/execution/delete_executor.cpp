@@ -73,13 +73,13 @@ auto DeleteExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {
         txn->ModifyUndoLog(old_undolink_opt->prev_log_idx_, undolog);
       }
       state = table_info_->table_->UpdateTupleInPlace(
-      meta, child_tp, child_rd, [txn,base_ts](const TupleMeta &o_meta, const Tuple &table, RID rid) -> bool {
-        if(base_ts != o_meta.ts_){
-          return false;
-        }
-        return o_meta.ts_ <= txn->GetReadTs() || o_meta.ts_ == txn->GetTransactionTempTs();
-      });   
-   
+          meta, child_tp, child_rd, [txn, base_ts](const TupleMeta &o_meta, const Tuple &table, RID rid) -> bool {
+            if (base_ts != o_meta.ts_) {
+              return false;
+            }
+            return o_meta.ts_ <= txn->GetReadTs() || o_meta.ts_ == txn->GetTransactionTempTs();
+          });
+
     } else {
       auto cur_undolog = GenerateNewUndoLog(&table_info_->schema_, &child_tp, nullptr, child_meta.ts_, UndoLink{});
       if (old_undolink_opt.has_value()) {
@@ -87,20 +87,20 @@ auto DeleteExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {
       }
       // 生成新的undolink
       auto new_undolink = txn->AppendUndoLog(cur_undolog);
-      state = UpdateTupleAndUndoLink(txn_mgr, child_rd, new_undolink, table_info_->table_.get(), txn, meta, child_tp,
-      [txn,base_ts](const TupleMeta &o_meta, const Tuple &o_tuple, RID rid, std::optional<UndoLink> undolink){
-        if(base_ts != o_meta.ts_){
-          return false;
-        }
-        return o_meta.ts_ <= txn->GetReadTs() || o_meta.ts_ == txn->GetTransactionTempTs();
-      });
+      state = UpdateTupleAndUndoLink(
+          txn_mgr, child_rd, new_undolink, table_info_->table_.get(), txn, meta, child_tp,
+          [txn, base_ts](const TupleMeta &o_meta, const Tuple &o_tuple, RID rid, std::optional<UndoLink> undolink) {
+            if (base_ts != o_meta.ts_) {
+              return false;
+            }
+            return o_meta.ts_ <= txn->GetReadTs() || o_meta.ts_ == txn->GetTransactionTempTs();
+          });
     }
-    if(!state){
+    if (!state) {
       txn->SetTainted();
       throw ExecutionException("Primary key unique violation detected in DeleteExecutor!");
     }
     // 更新信息
-    table_info_->table_->UpdateTupleMeta(meta, child_rd);
     delete_count_ += 1;
   }
   std::vector<Value> res_val;

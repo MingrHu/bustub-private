@@ -61,7 +61,7 @@ auto InsertExecutor::Next(Tuple *tuple, RID *rid) -> bool {
       // 检查这个元组的键在主键索引是否存在
       RID pm_key_rd = {};
       // RID存在
-      if (KeyExsitInPmKey(indexs_info[0],tp,pm_key_rd,table_info_,txn)) {
+      if (KeyExsitInPmKey(indexs_info[0], tp, pm_key_rd, table_info_, txn)) {
         auto cur_meta = table_info_->table_->GetTupleMeta(pm_key_rd);
         bool is_confilct = true;
         // 1 发现被删除了
@@ -99,7 +99,7 @@ auto InsertExecutor::Next(Tuple *tuple, RID *rid) -> bool {
       auto insert_state = table_info_->table_->UpdateTupleInPlace(
           meta, tp, insert_rid.value(), [txn](const TupleMeta &meta, const Tuple &table, RID rid) -> bool {
             return meta.ts_ <= txn->GetReadTs() || meta.ts_ == txn->GetTransactionTempTs();
-      });
+          });
       if (!insert_state) {
         txn->SetTainted();
         throw ExecutionException("Write-write confilict detected in InsertExecutor!");

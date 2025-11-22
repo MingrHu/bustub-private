@@ -22,7 +22,9 @@
 #include "catalog/catalog.h"
 #include "common/config.h"
 #include "common/exception.h"
+#include "common/macros.h"
 #include "concurrency/transaction.h"
+#include "execution/execution_common.h"
 #include "storage/table/table_heap.h"
 #include "storage/table/tuple.h"
 
@@ -61,8 +63,6 @@ auto TransactionManager::Commit(Transaction *txn) -> bool {
     }
   }
 
-  // TODO(fall2023): Implement the commit logic!
-
   // TODO(fall2023): set commit timestamp + update last committed timestamp here.
   // 更新事务所涉及到的所有元组元数据信息
   // 1.这里思考一下别的事务是否会修改元组？这里能直接用update吗？
@@ -71,8 +71,8 @@ auto TransactionManager::Commit(Transaction *txn) -> bool {
     auto table_info = catalog_->GetTable(table.first);
     for (const auto &rid : table.second) {
       TupleMeta meta = {commit_ts, table_info->table_->GetTupleMeta(rid).is_deleted_};
-      table_info->table_->UpdateTupleMeta(meta, rid);
-      // 看看这个undlink是否存在
+      // 看看这一页的undolink集合是否存在
+      // RID: page_id + slot_offset可唯一表示
       if (version_info_.find(rid.GetPageId()) != version_info_.end()) {
         auto ver_info = version_info_[rid.GetPageId()];
         auto &link_info = version_info_[rid.GetPageId()]->prev_link_;
@@ -81,6 +81,8 @@ auto TransactionManager::Commit(Transaction *txn) -> bool {
           ver_info->base_tuple_ts_[rid.GetSlotNum()] = commit_ts;
         }
       }
+      // 必须把版本链对应的元组提交时间更新了再更新元组的时间戳 否则中途可能被其余事务删除了
+      table_info->table_->UpdateTupleMeta(meta, rid);
     }
   }
 
@@ -101,7 +103,39 @@ void TransactionManager::Abort(Transaction *txn) {
   }
 
   // TODO(fall2023): Implement the abort logic!
-
+  // 事务的原子性在于整个事务对所有产生修改的元组进行全部回滚
+  // 而事务的并发保证了事务对一个元组的操作要么成功修改 要么不修改
+  // 因此回滚的核心在于事务涉及成功修改的所有元组进行回滚 没修改的不需要回滚
+  for (auto &[table_oid, rids] : txn->write_set_) {
+    const auto table_heap = catalog_->GetTable(table_oid)->table_.get();
+    for (const auto &rid : rids) {
+      auto [meta, tuple, undolink] = GetTupleAndUndoLink(this, table_heap, rid);
+      // 如果有版本链 说明是更新或者删除操作
+      if (undolink.has_value() && undolink->IsValid()) {
+        auto undolog = GetUndoLog(undolink.value());
+        auto old_tuple = ReconstructTuple(&catalog_->GetTable(table_oid)->schema_, tuple, meta, {undolog});
+        auto base_ts = meta.ts_;
+        // 回滚事务的核心不是未修改的元组 而是已经成功修改的元组
+        if (base_ts == txn->GetTransactionId()) {
+          meta.ts_ = undolog.ts_;
+          // 如果旧的元组存在
+          if (old_tuple.has_value()) {
+            meta.is_deleted_ = false;
+            UpdateTupleAndUndoLink(this, rid, undolog.prev_version_, table_heap, txn, meta, *old_tuple);
+          } else {
+            // 不存在直接标记这个rid对应的元组是删除的即可
+            meta.is_deleted_ = true;
+            UpdateTupleAndUndoLink(this, rid, undolog.prev_version_, table_heap, txn, meta, tuple);
+          }
+        }
+      } else {
+        // 说明是插入 直接修改元数据为删除即可
+        meta.is_deleted_ = true;
+        meta.ts_ = 0;
+        UpdateTupleAndUndoLink(this, rid, undolink, table_heap, txn, meta, tuple);
+      }
+    }
+  }
   std::unique_lock<std::shared_mutex> lck(txn_map_mutex_);
   txn->state_ = TransactionState::ABORTED;
   running_txns_.RemoveTxn(txn->read_ts_);
@@ -113,15 +147,6 @@ void TransactionManager::GarbageCollection() {
   // 2.事务已经提交了但是本身没有Undolog
   auto water_mark = running_txns_.GetWatermark();
   std::unordered_map<txn_id_t, uint32_t> txn_useless_log;
-
-  // // TEST
-  // for(auto &txn_info:txn_map_){
-  //   auto txn_id = txn_info.first;
-  //   auto txn = txn_info.second;
-  //   auto read_bale_txn_id = txn->GetTransactionIdHumanReadable();
-  //   auto size = txn->GetUndoLogNum();
-  //   std::cout<<txn_id<<" & "<<read_bale_txn_id<<" & "<<size<<std::endl;
-  // }
 
   for (const auto &ver_info : version_info_) {
     // 实际上存储的是最新元组的偏移和版本链
@@ -165,40 +190,5 @@ void TransactionManager::GarbageCollection() {
     }
   }
 }
-
-// auto TransactionManager::LockTuple(const RID &rid) -> bool {
-//   auto undolink = GetUndoLink(rid);
-//   // 存在版本链 当前元组是被修改过的
-//   if (undolink.has_value()) {
-//     // 预期的的tuple是不被占用的
-//     auto checker = [undolink](std::optional<UndoLink> old_undolink) -> bool {
-//       return old_undolink.has_value() && !old_undolink->is_inprogress_ &&
-//              old_undolink->prev_txn_ == undolink->prev_txn_;
-//     };
-//     return UpdateUndoLink(
-//         rid, std::make_optional(UndoLink{undolink->prev_txn_, undolink->prev_log_idx_, undolink->base_tuple_ts_,
-//         true}), checker);
-//   }
-//   UndoLink lk_tp_undolink_info = {};
-//   lk_tp_undolink_info.is_inprogress_ = true;
-//   return UpdateUndoLink(rid, lk_tp_undolink_info, [](std::optional<UndoLink> old_undolink) -> bool {
-//     // 预期是不含undolink
-//     return !old_undolink.has_value();
-//   });
-// }
-
-// auto TransactionManager::UnlockAllTuples(Transaction *txn) -> void {
-//   std::unique_lock<std::shared_mutex> version_info_lck(version_info_mutex_);
-//   for (const auto &p : txn->GetWriteSets()) {
-//     for (const auto &rid : p.second) {
-//       if (auto iter = version_info_.find(rid.GetPageId()); iter != version_info_.end()) {
-//         auto &prev_version = iter->second->prev_link_;
-//         if (auto iter = prev_version.find(rid.GetSlotNum()); iter != prev_version.end()) {
-//           iter->second.is_inprogress_ = false;
-//         }
-//       }
-//     }
-//   }
-// }
 
 }  // namespace bustub

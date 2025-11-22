@@ -19,8 +19,8 @@
 #include "concurrency/transaction.h"
 #include "concurrency/transaction_manager.h"
 #include "execution/execution_common.h"
-#include "execution/executors/update_executor.h"
 #include "execution/executors/insert_executor.h"
+#include "execution/executors/update_executor.h"
 #include "storage/index/index.h"
 #include "storage/table/table_iterator.h"
 #include "storage/table/tuple.h"
@@ -56,7 +56,6 @@ auto UpdateExecutor::Next(Tuple *tuple, RID *rid) -> bool {
   std::vector<Tuple> tuples;
 
   while (child_executor_->Next(&child_tp, &child_rd)) {
-    
     auto [old_meta, old_tuple] = table_info_->table_->GetTuple(child_rd);
     auto base_ts = old_meta.ts_;
     // 1.先检查是否有写写冲突
@@ -81,11 +80,11 @@ auto UpdateExecutor::Next(Tuple *tuple, RID *rid) -> bool {
     TupleMeta new_tpmeta = {txn->GetTransactionTempTs(), false};
 
     // 存在主键索引的情况 否则是一般情况或一般索引
-    if(!indexs_info_.empty() && indexs_info_[0]->is_primary_key_){
+    if (!indexs_info_.empty() && indexs_info_[0]->is_primary_key_) {
       exist_prim_key = true;
-      PmKeyDeleteTuple(txn, txn_mgr, old_tuple, child_rd,table_info_);
+      PmKeyDeleteTuple(txn, txn_mgr, old_tuple, child_rd, table_info_);
       tuples.emplace_back(new_tuple);
-    }else{
+    } else {
       // 原子更新操作 先锁住 看旧数据 再更新
       bool update_state = false;
       auto old_undolink_opt = txn_mgr->GetUndoLink(child_rd);
@@ -99,13 +98,14 @@ auto UpdateExecutor::Next(Tuple *tuple, RID *rid) -> bool {
           txn->ModifyUndoLog(old_undolink_opt->prev_log_idx_, undolog);
         }
         update_state = table_info_->table_->UpdateTupleInPlace(
-        new_tpmeta, new_tuple, child_rd, [txn,base_ts](const TupleMeta &o_meta, const Tuple &table, RID rid) -> bool {
-          if(base_ts != o_meta.ts_){
-            return false;
-          }
-          return o_meta.ts_ <= txn->GetReadTs() || o_meta.ts_ == txn->GetTransactionTempTs();
-          });
-        } else {
+            new_tpmeta, new_tuple, child_rd,
+            [txn, base_ts](const TupleMeta &o_meta, const Tuple &table, RID rid) -> bool {
+              if (base_ts != o_meta.ts_) {
+                return false;
+              }
+              return o_meta.ts_ <= txn->GetReadTs() || o_meta.ts_ == txn->GetTransactionTempTs();
+            });
+      } else {
         // 否则不是当前事务修改的或生成的
         // 这部分会涉及到更新版本链的问题
         auto cur_undolog = GenerateNewUndoLog(&table_info_->schema_, &old_tuple, &new_tuple, old_meta.ts_, UndoLink{});
@@ -114,29 +114,42 @@ auto UpdateExecutor::Next(Tuple *tuple, RID *rid) -> bool {
         }
         // 获取当前的undolink
         auto new_undolink = txn->AppendUndoLog(cur_undolog);
-        // test and set 
-        update_state = UpdateTupleAndUndoLink(txn_mgr, child_rd, new_undolink, table_info_->table_.get(), txn, new_tpmeta, new_tuple,
-        [txn,base_ts](const TupleMeta &o_meta, const Tuple &o_tuple, RID rid, std::optional<UndoLink> undolink){
-          if(base_ts != o_meta.ts_){
-            return false;
-          }
-          return o_meta.ts_ <= txn->GetReadTs() || o_meta.ts_ == txn->GetTransactionTempTs();
-        });
+        // test and set
+        update_state = UpdateTupleAndUndoLink(
+            txn_mgr, child_rd, new_undolink, table_info_->table_.get(), txn, new_tpmeta, new_tuple,
+            [txn, base_ts](const TupleMeta &o_meta, const Tuple &o_tuple, RID rid, std::optional<UndoLink> undolink) {
+              if (base_ts != o_meta.ts_) {
+                return false;
+              }
+              return o_meta.ts_ <= txn->GetReadTs() || o_meta.ts_ == txn->GetTransactionTempTs();
+            });
       }
-      // 事务写入集更新
-      txn->AppendWriteSet(plan_->GetTableOid(), child_rd);
 
       if (!update_state) {
         txn->SetTainted();
-        throw ExecutionException("Primary key unique violation detected in InsertExecutor!");
+        throw ExecutionException("Update op failed detected in UpdateExecutor!");
       }
+
+      // 其余索引更新
+      for (auto &index_info : indexs_info_) {
+        auto old_index_key =
+            old_tuple.KeyFromTuple(table_info_->schema_, index_info->key_schema_, index_info->index_->GetKeyAttrs());
+        index_info->index_->DeleteEntry(old_index_key, child_rd, exec_ctx_->GetTransaction());
+
+        auto new_index_key =
+            new_tuple.KeyFromTuple(table_info_->schema_, index_info->key_schema_, index_info->index_->GetKeyAttrs());
+        index_info->index_->InsertEntry(new_index_key, child_rd, exec_ctx_->GetTransaction());
+      }
+      // 事务写入集更新
+      txn->AppendWriteSet(plan_->GetTableOid(), child_rd);
+      update_count += 1;
     }
-    update_count += 1;
   }
 
-  if(exist_prim_key && !tuples.empty()){
-    for(auto& new_tuple:tuples){
+  if (exist_prim_key && !tuples.empty()) {
+    for (auto &new_tuple : tuples) {
       PmKeyInsertTuple(txn, txn_mgr, new_tuple, indexs_info_[0], table_info_);
+      update_count += 1;
     }
   }
 

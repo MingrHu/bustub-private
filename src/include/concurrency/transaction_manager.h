@@ -97,7 +97,7 @@ class TransactionManager {
      * it will create new elements even if it does not exist. Use `find` instead.
      */
     std::unordered_map<slot_offset_t, UndoLink> prev_link_;
-    
+
     std::unordered_map<slot_offset_t, timestamp_t> base_tuple_ts_;
   };
 
@@ -119,13 +119,6 @@ class TransactionManager {
   Catalog *catalog_;
 
   std::atomic<txn_id_t> next_txn_id_{TXN_START_ID};
-
-  // 对元组上锁 锁住了就修改undolink的is_inprogeress返回true
-  // 否则返回false
-  auto LockTuple(const RID &rid) -> bool;
-
-  // 将is_inprogeress修改为false
-  auto UnlockAllTuples(Transaction *txn) -> void;
 
  private:
   /** @brief Verify if a txn satisfies serializability. We will not test this function and you can change / remove it as

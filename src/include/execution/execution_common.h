@@ -79,17 +79,14 @@ auto UndoLogToString(const Schema *schema, const UndoLog &log) -> std::string;
 // 获取日志的修改列对应的字段
 auto GetUndoLogSchema(const Schema *schema, const UndoLog &log) -> Schema;
 
-auto KeyExsitInPmKey(const std::shared_ptr<IndexInfo> &pm_key_info, const Tuple &tuple,
-                                     RID &pm_key_rd,std::shared_ptr<TableInfo>& table_info,Transaction* txn) -> bool;
+auto KeyExsitInPmKey(const std::shared_ptr<IndexInfo> &pm_key_info, const Tuple &tuple, RID &pm_key_rd,
+                     std::shared_ptr<TableInfo> &table_info, Transaction *txn) -> bool;
 
-auto PmKeyInsertTuple(Transaction* txn,TransactionManager* txn_mgr,Tuple new_tuple,std::shared_ptr<IndexInfo>& pm_key_index,
-std::shared_ptr<TableInfo>& table_info)->void;
+auto PmKeyInsertTuple(Transaction *txn, TransactionManager *txn_mgr, const Tuple &new_tuple,
+                      std::shared_ptr<IndexInfo> &pm_key_index, std::shared_ptr<TableInfo> &table_info) -> void;
 
-auto PmKeyDeleteTuple(Transaction* txn,TransactionManager* txn_mgr,Tuple old_tuple,
-  RID rd,std::shared_ptr<TableInfo>& table_info)->void;
-
-// auto UpdatePrmIndexs(const TableInfo *table_info, std::shared_ptr<IndexInfo> &pm_index,
-//                      const std::vector<std::tuple<Tuple, Tuple, RID>> &tuples_info, Transaction *txn) -> void;
+auto PmKeyDeleteTuple(Transaction *txn, TransactionManager *txn_mgr, const Tuple &old_tuple, RID rd,
+                      std::shared_ptr<TableInfo> &table_info) -> void;
 
 // TODO(P4): Add new functions as needed... You are likely need to define some more functions.
 //
@@ -106,7 +103,5 @@ auto PmKeyDeleteTuple(Transaction* txn,TransactionManager* txn_mgr,Tuple old_tup
 // of other parts of the system. You do not need to define the same set of helper functions in
 // your implementation. Please add your own ones as necessary so that you do not need to write
 // the same code everywhere.
-
-
 
 }  // namespace bustub

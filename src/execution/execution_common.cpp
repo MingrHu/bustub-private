@@ -423,8 +423,8 @@ auto GetUndoLogSchema(const Schema *schema, const UndoLog &log) -> Schema {
   return Schema{schema_val};
 }
 
-auto KeyExsitInPmKey(const std::shared_ptr<IndexInfo> &pm_key_info, const Tuple &tuple,
-                                     RID &pm_key_rd,std::shared_ptr<TableInfo>& table_info,Transaction* txn) -> bool {
+auto KeyExsitInPmKey(const std::shared_ptr<IndexInfo> &pm_key_info, const Tuple &tuple, RID &pm_key_rd,
+                     std::shared_ptr<TableInfo> &table_info, Transaction *txn) -> bool {
   // 先根据当前元组获取组成pmkey的键
   auto tp_pm_key =
       tuple.KeyFromTuple(table_info->schema_, pm_key_info->key_schema_, pm_key_info->index_->GetKeyAttrs());
@@ -438,16 +438,15 @@ auto KeyExsitInPmKey(const std::shared_ptr<IndexInfo> &pm_key_info, const Tuple 
   return !check.empty();
 }
 
-auto PmKeyInsertTuple(Transaction* txn,TransactionManager* txn_mgr,Tuple new_tuple,std::shared_ptr<IndexInfo>& pm_key_index,
-std::shared_ptr<TableInfo>& table_info)->void{
-
+auto PmKeyInsertTuple(Transaction *txn, TransactionManager *txn_mgr, const Tuple &new_tuple,
+                      std::shared_ptr<IndexInfo> &pm_key_index, std::shared_ptr<TableInfo> &table_info) -> void {
   bool insert_into_delete = false;
   std::optional<RID> insert_rid = {};
   // 检查这个元组的键在主键索引是否存在
   RID pm_key_rd = {};
   // RID存在
-  if (KeyExsitInPmKey(pm_key_index, new_tuple, pm_key_rd,table_info,txn)) {
-    auto [old_meta,old_tuple] = table_info->table_->GetTuple(pm_key_rd);
+  if (KeyExsitInPmKey(pm_key_index, new_tuple, pm_key_rd, table_info, txn)) {
+    auto [old_meta, old_tuple] = table_info->table_->GetTuple(pm_key_rd);
     bool is_confilct = true;
     // 1 发现被删除了
     if (old_meta.is_deleted_) {
@@ -494,8 +493,7 @@ std::shared_ptr<TableInfo>& table_info)->void{
   txn->AppendWriteSet(table_info->oid_, insert_rid.value());
   // 更新主键索引
   auto pm_key =
-      new_tuple.KeyFromTuple(table_info->schema_, 
-        pm_key_index->key_schema_, pm_key_index->index_->GetKeyAttrs());
+      new_tuple.KeyFromTuple(table_info->schema_, pm_key_index->key_schema_, pm_key_index->index_->GetKeyAttrs());
   // printf("pm_key = %s\n",pm_key.ToString(&indexs_info[0]->key_schema_).c_str());
   // 更新索引的时候是在事务锁保护下进行的 如果发现此时被其余事务占用了 则失败
   if (!insert_into_delete && !pm_key_index->index_->InsertEntry(pm_key, insert_rid.value(), txn)) {
@@ -504,9 +502,8 @@ std::shared_ptr<TableInfo>& table_info)->void{
   }
 }
 
-auto PmKeyDeleteTuple(Transaction* txn,TransactionManager* txn_mgr,Tuple old_tuple,RID rd,
-  std::shared_ptr<TableInfo>& table_info)->void{
-
+auto PmKeyDeleteTuple(Transaction *txn, TransactionManager *txn_mgr, const Tuple &old_tuple, RID rd,
+                      std::shared_ptr<TableInfo> &table_info) -> void {
   auto old_meta = table_info->table_->GetTupleMeta(rd);
   // 1.检查是否有写入冲突
   // bool lk_state = txn_mgr->LockTuple(child_rd);
@@ -524,37 +521,38 @@ auto PmKeyDeleteTuple(Transaction* txn,TransactionManager* txn_mgr,Tuple old_tup
   auto base_ts = old_meta.ts_;
   // 如果是被当前的事务删除
   if (base_ts == txn->GetTransactionTempTs()) {
-    // 如果原本有undolog 那么就更新 由于是当前事务插入删除的 因此没有undolog就无需生成
+    // 如果原本有undolog 那么就更新 如果是当前事务插入然后现在删除的 因此没有undolog就无需生成
     if (old_undolink_opt.has_value() && old_undolink_opt->IsValid()) {
       auto old_undolog = txn->GetUndoLog(old_undolink_opt->prev_log_idx_);
       auto undolog = GenerateUpdatedUndoLog(&table_info->schema_, &old_tuple, nullptr, old_undolog);
       txn->ModifyUndoLog(old_undolink_opt->prev_log_idx_, undolog);
     }
     // 原子操作 test and set
-    update_state = table_info->table_->UpdateTupleInPlace(new_meta, old_tuple, rd, 
-      [txn,base_ts](const TupleMeta &o_meta, const Tuple &o_tuple, RID rid) -> bool {
-        if(base_ts != o_meta.ts_){
-          return false;
-      }
-      return o_meta.ts_ <= txn->GetReadTs() || o_meta.ts_ == txn->GetTransactionTempTs();
-    });
-  } else{
+    update_state = table_info->table_->UpdateTupleInPlace(
+        new_meta, old_tuple, rd, [txn, base_ts](const TupleMeta &o_meta, const Tuple &o_tuple, RID rid) -> bool {
+          if (base_ts != o_meta.ts_) {
+            return false;
+          }
+          return o_meta.ts_ <= txn->GetReadTs() || o_meta.ts_ == txn->GetTransactionTempTs();
+        });
+  } else {
     auto new_undolog = GenerateNewUndoLog(&table_info->schema_, &old_tuple, nullptr, old_meta.ts_, UndoLink{});
     if (old_undolink_opt.has_value()) {
       new_undolog.prev_version_ = old_undolink_opt.value();
     }
     auto new_undolink = txn->AppendUndoLog(new_undolog);
     // 更新undolink
-    update_state = UpdateTupleAndUndoLink(txn_mgr, rd, new_undolink, table_info->table_.get(), txn, new_meta, old_tuple,
-    [base_ts,txn](const TupleMeta &o_meta, const Tuple &o_tp, RID rid, std::optional<UndoLink> undolink)->bool{
-      if(base_ts != o_meta.ts_){
-        return false;
-      }
-      return o_meta.ts_ <= txn->GetReadTs() || o_meta.ts_ == txn->GetTransactionTempTs();
-    });
+    update_state = UpdateTupleAndUndoLink(
+        txn_mgr, rd, new_undolink, table_info->table_.get(), txn, new_meta, old_tuple,
+        [base_ts, txn](const TupleMeta &o_meta, const Tuple &o_tp, RID rid, std::optional<UndoLink> undolink) -> bool {
+          if (base_ts != o_meta.ts_) {
+            return false;
+          }
+          return o_meta.ts_ <= txn->GetReadTs() || o_meta.ts_ == txn->GetTransactionTempTs();
+        });
   }
 
-  if(!update_state){
+  if (!update_state) {
     txn->SetTainted();
     throw ExecutionException("Write-write confilct detected in DeleteTuple!");
   }

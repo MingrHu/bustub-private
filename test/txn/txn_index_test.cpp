@@ -267,7 +267,7 @@ TEST(TxnIndexTest, UpdatePrimaryKeyTest) {  // NOLINT
 
   WithTxn(txn2_verify_index, QueryShowResult(*bustub, _var, _txn, query, IntResult{{1, 0}, {2, 0}, {3, 0}, {4, 0}}));
   WithTxn(txn2_verify_index, QueryIndex(*bustub, _var, _txn, query, "col1", std::vector<int>{1, 2, 3, 4},
-                           IntResult{{1, 0}, {2, 0}, {3, 0}, {4, 0}}));
+                                        IntResult{{1, 0}, {2, 0}, {3, 0}, {4, 0}}));
   // hidden tests...
 }
 

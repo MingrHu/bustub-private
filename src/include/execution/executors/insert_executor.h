@@ -65,7 +65,7 @@ class InsertExecutor : public AbstractExecutor {
   bool is_finished_{false};
 
   std::shared_ptr<TableInfo> table_info_;
-  
+
   int32_t insert_count_;
 };
 
