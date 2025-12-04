@@ -673,18 +673,16 @@ void DiskManagerProxy::ScheduleProxy(std::shared_ptr<FrameHeader> &frame, bool i
 
     // 加入线程
     // 值传入一个dirty_data
-    thread_pool_->PushtTask([this, iswrite, oldpgid, dirty_data, frame] {
+    thread_pool_->PushtTask([this, iswrite, oldpgid, dirty_data = std::move(dirty_data), frame] {
       std::promise<bool> p = disk_scheduler_->CreatePromise();
       std::future<bool> ft = p.get_future();
-      // 创建脏页的临时拷贝数据 只要拷贝完成就置位
-      std::vector<char> mutable_data(dirty_data.begin(), dirty_data.end());
       {
-        std::unique_lock lock(frame->io_latch_);
+        std::lock_guard latch(frame->io_latch_);
         frame->iswriting_ = false;
         frame->frame_cv_.notify_all();
       }
 
-      DiskRequest r{iswrite, mutable_data.data(), oldpgid, std::move(p)};
+      DiskRequest r{iswrite, const_cast<char*>(dirty_data.data()), oldpgid, std::move(p)};
       disk_scheduler_->Schedule(std::move(r));
       ft.get();
     });
@@ -695,7 +693,7 @@ void DiskManagerProxy::ScheduleProxy(std::shared_ptr<FrameHeader> &frame, bool i
       // 从缓存读取
       frame->data_ = page_cache_[oldpgid];
       {
-        std::unique_lock lock(frame->io_latch_);
+        std::lock_guard latch(frame->io_latch_);
         frame->isloading_ = false;
         frame->frame_cv_.notify_all();
       }
@@ -710,7 +708,7 @@ void DiskManagerProxy::ScheduleProxy(std::shared_ptr<FrameHeader> &frame, bool i
         disk_scheduler_->Schedule(std::move(r));
         ft.get();
         {
-          std::unique_lock lock(frame->io_latch_);
+          std::lock_guard latch(frame->io_latch_);
           frame->isloading_ = false;
           frame->frame_cv_.notify_all();
         }
@@ -721,8 +719,8 @@ void DiskManagerProxy::ScheduleProxy(std::shared_ptr<FrameHeader> &frame, bool i
 
 void DiskManagerProxy::Deletepagecache(std::shared_ptr<FrameHeader> &frame) {
   std::lock_guard latch(page_mtx_[frame->pgid_]);
-  page_cache_[frame->pgid_].clear();
-  page_cache_valid_[frame->pgid_] = false;
+  page_cache_.erase(frame->pgid_);
+  page_cache_valid_.erase(frame->pgid_);
 }
 
 }  // namespace bustub
