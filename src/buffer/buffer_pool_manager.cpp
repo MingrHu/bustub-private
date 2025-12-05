@@ -673,7 +673,7 @@ void DiskManagerProxy::ScheduleProxy(std::shared_ptr<FrameHeader> &frame, bool i
 
     // 加入线程
     // 值传入一个dirty_data
-    thread_pool_->PushtTask([this, iswrite, oldpgid, dirty_data = std::move(dirty_data), frame] {
+    thread_pool_->PushtTask([this, iswrite, oldpgid, dirty_data, frame] {
       std::promise<bool> p = disk_scheduler_->CreatePromise();
       std::future<bool> ft = p.get_future();
       {
