@@ -103,9 +103,9 @@ class LRUKReplacer {
   std::mutex latch_;
 
   // 记录帧对应的LRUKNode节点信息
-  std::unordered_map<frame_id_t, LRUKNode *> node_store_;
+  std::unordered_map<frame_id_t, LRUKNode*> node_store_;
   // 记录频率K对应的节点信息
-  std::map<size_t, LRUKNode *> freqk_map_;
+  std::map<size_t, LRUKNode*> freqk_map_;
   // 记录小于K对应的节点信息
   LRUKNode *head_;
   // 检测帧id是否合法
