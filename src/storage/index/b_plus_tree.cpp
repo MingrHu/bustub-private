@@ -16,7 +16,6 @@
 #include <utility>
 #include <vector>
 #include "common/config.h"
-#include "common/macros.h"
 #include "storage/index/b_plus_tree_debug.h"
 #include "storage/index/index_iterator.h"
 #include "storage/page/b_plus_tree_header_page.h"
