@@ -12,15 +12,19 @@
 
 #include "execution/executors/external_merge_sort_executor.h"
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <iostream>
 #include <optional>
+#include <sstream>
 #include <vector>
 #include "catalog/schema.h"
 #include "common/config.h"
+#include "common/logger.h"
 #include "common/macros.h"
 #include "execution/execution_common.h"
 #include "execution/plans/sort_plan.h"
+#include "fmt/core.h"
 #include "storage/page/page_guard.h"
 #include "storage/table/tuple.h"
 
@@ -33,14 +37,25 @@ ExternalMergeSortExecutor<K>::ExternalMergeSortExecutor(ExecutorContext *exec_ct
 
 template <size_t K>
 void ExternalMergeSortExecutor<K>::Init() {
+
   child_executor_->Init();
+  debug_ss_.clear();
+  debug_ss_<<"----------------BASE INFO--------------\n";
   runs_idx_ = 0;
   runs_.clear();
   CreateInitRuns();
   TwoWaysMerge();
   if (!runs_.empty()) {
-    iter_ = runs_[runs_idx_].Begin();
+    iter_ = runs_[0].Begin();
   }
+  // FOR TEST
+  debug_ss_<<fmt::format("buffer_pool_size = {}\n",exec_ctx_->GetBufferPoolManager()->Size());
+  size_t pages = 0;
+  for(const auto&run:runs_){
+    pages += run.GetPageCount();
+  }
+  debug_ss_<<fmt::format("Actual all pages num = {}\n", pages);
+  LOG_DEBUG("%s",debug_ss_.str().c_str());
 }
 
 template <size_t K>
@@ -79,10 +94,9 @@ void ExternalMergeSortExecutor<K>::CreateInitRuns() {
     sort_pages.push_back(new_pgid);
 
     // 一个run包含的元组数量为sort_page->GetMaxSize() * max_pages
+    // 从子执行器里面获取最多一个run的元组 多的就下一轮
     for (; tuple_idx < sort_page->GetMaxSize() * max_pages; tuple_idx++) {
       if (child_executor_->Next(&tuple, &rid)) {
-        // std::string str = tuple.ToString(&child_executor_->GetOutputSchema());
-        // std::cout<< str<<std::endl;
         entries.emplace_back(GenerateSortKey(tuple, plan_->GetOrderBy(), GetOutputSchema()), tuple);
       } else {
         break;
@@ -105,6 +119,7 @@ void ExternalMergeSortExecutor<K>::CreateInitRuns() {
     //   std::cout<< str<<std::endl;
     // }
 
+    // 把run里面排序好的元组写入磁盘 最终将这些磁盘页号记录到runs里面
     for (uint32_t idx = 0, cnt = 0; idx < entries.size(); idx++, cnt++) {
       // 当一个页面满了的时候切换下一个页面
       if (cnt == sort_page->GetMaxSize()) {
@@ -124,6 +139,11 @@ void ExternalMergeSortExecutor<K>::CreateInitRuns() {
 
 template <size_t K>
 void ExternalMergeSortExecutor<K>::TwoWaysMerge() {
+  // multi ways merge test
+  #define KWAYS 0
+  #if KWAYS
+    KWayMerge();
+  #else
   // for testing delete op
   // int delete_cnt = 0;
   while (runs_.size() > 1) {
@@ -193,6 +213,7 @@ void ExternalMergeSortExecutor<K>::TwoWaysMerge() {
   }
   // for testing delete op
   // std::cout<<"delete_cnt = "<<delete_cnt<<std::endl;
+  #endif
 }
 
 template <size_t K>
@@ -214,6 +235,94 @@ void ExternalMergeSortExecutor<K>::SolveRemain(MergeSortRun::Iterator &iter, con
     cur_idx += 1;
   }
 }
+
+// K路归并排序
+template <size_t K>
+void ExternalMergeSortExecutor<K>::KWayMerge() {
+  size_t debug_k = K * 4;
+  while (runs_.size() > 1) {
+    std::vector<MergeSortRun> new_runs;
+    uint32_t size = runs_.size();
+    for (uint32_t idx = 0; idx < size; idx += debug_k) {
+      // collect up to K runs [idx, idx+K)
+      uint32_t end_idx = std::min<uint32_t>(idx + debug_k, size);
+      uint32_t group_cnt = end_idx - idx;
+      if (group_cnt == 1) {  // 单个剩余 run 直接搬过
+        new_runs.emplace_back(std::move(runs_[idx]));
+        continue;
+      }
+
+      struct HeapNode {
+        SortEntry entry_;
+        uint32_t run_idx_; 
+      };
+
+      auto cmp_heap = [&](const HeapNode &a, const HeapNode &b) {
+        return cmp_(b.entry_, a.entry_); 
+      };
+      std::priority_queue<HeapNode, std::vector<HeapNode>, decltype(cmp_heap)> heap(cmp_heap);
+
+      // 一些必要的变量
+      std::vector<page_id_t> pages;
+      page_id_t new_pgid = exec_ctx_->GetBufferPoolManager()->NewPage();
+      pages.push_back(new_pgid);
+      auto new_page_guard = exec_ctx_->GetBufferPoolManager()->WritePage(new_pgid);
+      auto sort_page_store = new_page_guard.AsMut<SortPage>();
+      sort_page_store->Init(child_executor_->GetOutputSchema().GetInlinedStorageSize());
+      uint32_t cur_nums = 0;
+
+      // 每个对应run的迭代器
+      std::vector<MergeSortRun::Iterator> iters(group_cnt);
+      std::vector<MergeSortRun::Iterator> ends(group_cnt);
+      for (uint32_t r = 0; r < group_cnt; ++r) {
+        iters[r] = runs_[idx + r].Begin();
+        ends[r] = runs_[idx + r].End();
+        if (iters[r] != ends[r]) {
+          SortEntry e{GenerateSortKey(*iters[r], plan_->GetOrderBy(), GetOutputSchema()), *iters[r]};
+          heap.push(HeapNode{e, r});
+          ++iters[r];
+        }
+      }
+
+      while (!heap.empty()) {
+        // 达到一个页最大的容量
+        if (cur_nums == sort_page_store->GetMaxSize()) {
+          new_pgid = exec_ctx_->GetBufferPoolManager()->NewPage();
+          pages.push_back(new_pgid);
+          new_page_guard = exec_ctx_->GetBufferPoolManager()->WritePage(new_pgid);
+          sort_page_store = new_page_guard.AsMut<SortPage>();
+          sort_page_store->Init(child_executor_->GetOutputSchema().GetInlinedStorageSize());
+          cur_nums = 0;
+        }
+
+        HeapNode top = heap.top();
+        heap.pop();
+        sort_page_store->InsertTuple(top.entry_.second); // 写出最小元素
+        cur_nums += 1;
+
+        uint32_t src = top.run_idx_;
+        // 如果该 run 还有剩余元素，把下一个元素推入堆
+        if (iters[src] != ends[src]) {
+          SortEntry e{GenerateSortKey(*iters[src], plan_->GetOrderBy(), GetOutputSchema()), *iters[src]};
+          heap.push(HeapNode{e, src});
+          ++iters[src];
+        }
+      }
+
+      // 删除被合并的旧 pages
+      for (uint32_t r = 0; r < group_cnt; ++r) {
+        for (const auto &pid : runs_[idx + r].GetPages()) {
+          bool is_delete = exec_ctx_->GetBufferPoolManager()->DeletePage(pid);
+          BUSTUB_ENSURE(is_delete, "Please check why page not deleted?\n");
+        }
+      }
+
+      new_runs.emplace_back(pages, exec_ctx_->GetBufferPoolManager());
+    } // end for idx
+    runs_ = std::move(new_runs);
+  } // end while
+}
+
 
 template class ExternalMergeSortExecutor<2>;
 

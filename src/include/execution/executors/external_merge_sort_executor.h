@@ -15,6 +15,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <sstream>
 #include <utility>
 #include <vector>
 #include "common/config.h"
@@ -137,7 +138,7 @@ class MergeSortRun {
  public:
   MergeSortRun() = default;
 
-  MergeSortRun(std::vector<page_id_t> pages, BufferPoolManager *bpm) : pages_(std::move(pages)), bpm_(bpm) {}
+  MergeSortRun(std::vector<page_id_t>& pages, BufferPoolManager *bpm) : pages_(std::move(pages)), bpm_(bpm) {}
 
   MergeSortRun(MergeSortRun &&that) noexcept : pages_(std::move(that.pages_)), bpm_(that.bpm_) { that.bpm_ = nullptr; }
 
@@ -154,7 +155,7 @@ class MergeSortRun {
 
   auto operator=(const MergeSortRun &) -> MergeSortRun & = delete;
 
-  auto GetPageCount() -> size_t { return pages_.size(); }
+  auto GetPageCount()const -> size_t { return pages_.size(); }
 
   auto GetPages() const -> const std::vector<page_id_t> & { return pages_; }
 
@@ -355,6 +356,10 @@ class ExternalMergeSortExecutor : public AbstractExecutor {
 
   void SolveRemain(MergeSortRun::Iterator &iter, const MergeSortRun::Iterator &iter_end, SortPage *&sort_page_store,
                    uint32_t cur_idx, std::vector<page_id_t> &pages, WritePageGuard &new_page_guard);
+
+  void KWayMerge();
+
+  std::stringstream debug_ss_;
 };
 
 }  // namespace bustub
