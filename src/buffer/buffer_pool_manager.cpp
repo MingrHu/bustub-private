@@ -680,14 +680,15 @@ void DiskManagerProxy::ScheduleProxy(std::shared_ptr<FrameHeader> &frame, bool i
       std::future<bool> ft = p.get_future();
       // 创建脏页的临时拷贝数据 只要拷贝完成就置位
       std::vector<char> mutable_data(dirty_data.begin(), dirty_data.end());
+      DiskRequest r{iswrite, mutable_data.data(), oldpgid, std::move(p)};
+      disk_scheduler_->Schedule(std::move(r));
+
+      // 原因是保证置位在真正入串行队列后
       {
         std::unique_lock lock(frame->io_latch_);
         frame->iswriting_ = false;
         frame->frame_cv_.notify_all();
       }
-
-      DiskRequest r{iswrite, mutable_data.data(), oldpgid, std::move(p)};
-      disk_scheduler_->Schedule(std::move(r));
       ft.get();
     });
 
