@@ -50,7 +50,13 @@ class LRUKNode {
   LRUKNode(size_t k, frame_id_t fid)
       : k_(k), fid_(fid), is_evictable_(false), is_initial_(false), prev_(nullptr), next_(nullptr){};
 
-  void Updatehistory(size_t timestamp);
+  // 更新节点历史-尾插头出
+  void Updatehistory(size_t timestamp) {
+    if (history_.size() == k_) {
+      history_.pop_front();
+    }
+    history_.push_back(timestamp);
+  }
 
   void Clearcurnode() {
     is_evictable_ = false;

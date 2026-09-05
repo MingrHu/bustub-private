@@ -11,6 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "buffer/lru_k_replacer.h"
+#include <mutex>
 
 namespace bustub {
 
@@ -60,7 +61,7 @@ LRUKReplacer::~LRUKReplacer() {
  */
 auto LRUKReplacer::Evict() -> std::optional<frame_id_t> {
   std::optional<frame_id_t> fid = std::nullopt;
-  latch_.lock();
+  std::lock_guard latch(latch_);
   if (curr_size_ != 0) {
     // 尝试找对应的节点最久未被访问节点
     LRUKNode *dlnode = nullptr;
@@ -76,7 +77,6 @@ auto LRUKReplacer::Evict() -> std::optional<frame_id_t> {
     }
     curr_size_ -= 1;
   }
-  latch_.unlock();
   return fid;
 }
 
@@ -97,9 +97,9 @@ void LRUKReplacer::RecordAccess(frame_id_t frame_id, [[maybe_unused]] AccessType
   // BUSTUB_ENSURE(!Validframeid(frame_id), "Invalid frame id!");
   // 更新当前时间戳
   auto timestamp = Updatetimestamp();
-  latch_.lock();
+  std::lock_guard latch(latch_);
   // 当前帧已经有内存了
-  if (node_store_.find(frame_id) != node_store_.end()) {
+  if (node_store_.count(frame_id) != 0) {
     auto node = node_store_[frame_id];
     // 如果这个节点访问次数大于等于K 尝试删除map里面的
     RemoveNodeInFreqKmap(node);
@@ -109,7 +109,6 @@ void LRUKReplacer::RecordAccess(frame_id_t frame_id, [[maybe_unused]] AccessType
     auto newnode = new LRUKNode(k_, frame_id);
     PushNode(frame_id, newnode, timestamp);
   }
-  latch_.unlock();
 }
 
 /**
@@ -231,13 +230,6 @@ void LRUKReplacer::Pushback(LRUKNode *node) {
   LRUKNode *next = head_->next_;
   head_->next_ = node, next->prev_ = node;
   node->prev_ = head_, node->next_ = next;
-}
-
-void LRUKNode::Updatehistory(size_t timestamp) {
-  if (history_.size() == k_) {
-    history_.pop_front();
-  }
-  history_.push_back(timestamp);
 }
 
 void LRUKReplacer::PushNode(frame_id_t fid, LRUKNode *node, size_t timestamp) {

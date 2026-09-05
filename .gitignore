@@ -21,6 +21,9 @@
 .vscode
 #OS X specific files.
 .DS_store
+# Windows download-origin metadata exported as sidecar files.
+*:Zone.Identifier
+*:Zone.Identifier:$DATA
 # Core files
 #core
 
