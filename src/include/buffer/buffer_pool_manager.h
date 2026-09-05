@@ -13,8 +13,6 @@
 #pragma once
 
 #include <condition_variable>
-#include <future>
-#include <iterator>
 #include <list>
 #include <memory>
 #include <mutex>
@@ -138,10 +136,10 @@ class ThreadPool {
           // 执行的时候保护
           std::function<void()> task;
           {
+            // 无任务则睡眠 否则唤醒执行任务
             std::unique_lock latch(task_que_mtx_);
-
+            // 谓词表达: 防止虚假唤醒 允许结束条件是队列空或线程池停止
             cv_.wait(latch, [this]() -> bool { return (!task_que_.empty() || stop_flag_); });
-
             if (stop_flag_ && task_que_.empty()) {
               return;
             }
@@ -151,7 +149,7 @@ class ThreadPool {
           try {
             task();
           } catch (const std::exception &e) {
-            std::cerr << "线程池发生错误:" << e.what() << std::endl;
+            std::cerr << "线程池执行任务时发生错误:" << e.what() << std::endl;
           }
         }
       });
@@ -189,13 +187,14 @@ class ThreadPool {
     cv_.notify_one();
   }
 
+ private:
+
   static auto InitInstance(int num) -> void {
     if (pool == nullptr) {
       pool = std::make_shared<ThreadPool>(num);
     }
   }
 
- private:
   // 单例模式线程池
   static std::shared_ptr<ThreadPool> pool;
 
@@ -223,9 +222,10 @@ class DiskManagerProxy {
 
  private:
   struct ProxyFrame {
-    // 防止单参数直接隐式转换为结构体对象
+    
     ProxyFrame(std::shared_ptr<FrameHeader> &frame, bool iswrite, page_id_t oldpgid);
 
+    // 防止单参数直接隐式转换为结构体对象
     ProxyFrame(ProxyFrame &&that) noexcept;
 
     auto operator=(ProxyFrame &&that) noexcept -> ProxyFrame &;
